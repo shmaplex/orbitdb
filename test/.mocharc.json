@@ -5,6 +5,21 @@
   "exit": true,
   "bail": false,
   "slow": 1000,
-  "exclude": ["test/browser/**/*.js", "test/utils/relay.js"],
-  "timeout": 30000
+  "exclude": [
+    "test/browser/**/*.ts",
+    "test/utils/relay.ts"
+  ],
+  "timeout": 30000,
+  "require": "ts-node/esm",
+  "extension": [
+    "ts"
+  ],
+  "spec": "test/**/*.test.ts",
+  "watch-files": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ],
+  "watch-ignore": [
+    "node_modules"
+  ]
 }
