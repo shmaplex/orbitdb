@@ -1,181 +1,167 @@
-import { strictEqual } from 'assert'
-// import mapSeries from 'p-each-series'
-import { rimraf } from 'rimraf'
-import OrbitDB from '../src/orbitdb.js'
-import connectPeers from './utils/connect-nodes.js'
-import waitFor from './utils/wait-for.js'
-import createHelia from './utils/create-helia.js'
+import {
+  describe,
+  it,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+  expect,
+} from "vitest";
+import { rimraf } from "rimraf";
+import path from "path";
+import OrbitDB from "../src/orbitdb.js";
+import connectPeers from "./utils/connect-nodes.js";
+import waitFor from "./utils/wait-for.js";
+import createHelia from "./utils/create-helia.js";
 
-const dbPath1 = './orbitdb/tests/multiple-databases/1'
-const dbPath2 = './orbitdb/tests/multiple-databases/2'
+const dbPath1 = "./orbitdb/tests/multiple-databases/1";
+const dbPath2 = "./orbitdb/tests/multiple-databases/2";
 
 const databaseInterfaces = [
   {
-    name: 'events',
-    open: async (orbitdb, address, options) => await orbitdb.open(address, options),
-    write: async (db, index) => {
-      await db.add('hello' + index)
+    name: "events",
+    open: async (orbitdb: any, address: string, options: any) =>
+      await orbitdb.open(address, options),
+    write: async (db: any, index: number) => {
+      await db.add("hello" + index);
     },
-    query: async (db) => {
-      const all = await db.all()
-      return all.length
-    }
+    query: async (db: any) => {
+      const all = await db.all();
+      return all.length;
+    },
   },
   {
-    name: 'key-value',
-    open: async (orbitdb, address, options) => await orbitdb.open(address, { ...options, type: 'keyvalue' }),
-    write: async (db, index) => await db.put('hello', index),
-    query: async (db) => await db.get('hello')
+    name: "key-value",
+    open: async (orbitdb: any, address: string, options: any) =>
+      await orbitdb.open(address, { ...options, type: "keyvalue" }),
+    write: async (db: any, index: number) => await db.put("hello", index),
+    query: async (db: any) => await db.get("hello"),
   },
   {
-    name: 'documents',
-    open: async (orbitdb, address, options) => await orbitdb.open(address, { ...options, type: 'documents' }),
-    write: async (db, index) => await db.put({ _id: 'hello', testing: index }),
-    query: async (db) => {
-      const doc = await db.get('hello')
-      return doc ? doc.value.testing : 0
-    }
-  }
-]
+    name: "documents",
+    open: async (orbitdb: any, address: string, options: any) =>
+      await orbitdb.open(address, { ...options, type: "documents" }),
+    write: async (db: any, index: number) =>
+      await db.put({ _id: "hello", testing: index }),
+    query: async (db: any) => {
+      const doc = await db.get("hello");
+      return doc ? doc.value.testing : 0;
+    },
+  },
+];
 
-describe('orbitdb - Multiple Databases', function () {
-  this.timeout(30000)
+describe("orbitdb - Multiple Databases", () => {
+  let ipfs1: any, ipfs2: any;
+  let orbitdb1: any, orbitdb2: any;
 
-  let ipfs1, ipfs2
-  let orbitdb1, orbitdb2
+  const localDatabases: any[] = [];
+  const remoteDatabases: any[] = [];
 
-  const localDatabases = []
-  const remoteDatabases = []
+  beforeAll(async () => {
+    [ipfs1, ipfs2] = await Promise.all([createHelia(), createHelia()]);
+    await connectPeers(ipfs1, ipfs2);
 
-  // Create two IPFS instances and two OrbitDB instances (2 nodes/peers)
-  before(async () => {
-    [ipfs1, ipfs2] = await Promise.all([createHelia(), createHelia()])
-    await connectPeers(ipfs1, ipfs2)
-    console.log('Peers connected')
-    orbitdb1 = await OrbitDB({ ipfs: ipfs1, id: 'user1', directory: dbPath1 })
-    orbitdb2 = await OrbitDB({ ipfs: ipfs2, id: 'user2', directory: dbPath2 })
-  })
+    orbitdb1 = await OrbitDB({ ipfs: ipfs1, id: "user1", directory: dbPath1 });
+    orbitdb2 = await OrbitDB({ ipfs: ipfs2, id: "user2", directory: dbPath2 });
+  });
 
-  after(async () => {
-    if (orbitdb1) {
-      await orbitdb1.stop()
-    }
-    if (orbitdb2) {
-      await orbitdb2.stop()
-    }
+  afterAll(async () => {
+    if (orbitdb1) await orbitdb1.stop();
+    if (orbitdb2) await orbitdb2.stop();
 
-    await rimraf('./orbitdb')
+    await rimraf("./orbitdb");
 
-    if (ipfs1) {
-      await ipfs1.stop()
-    }
-    if (ipfs2) {
-      await ipfs2.stop()
-    }
+    if (ipfs1) await ipfs1.stop();
+    if (ipfs2) await ipfs2.stop();
 
-    await rimraf('./ipfs1')
-    await rimraf('./ipfs2')
-  })
+    await rimraf("./ipfs1");
+    await rimraf("./ipfs2");
+  });
 
   beforeEach(async () => {
-    let options = {}
-    // Set write access for both clients
-    options.write = [
-      orbitdb1.identity.id,
-      orbitdb2.identity.id
-    ]
+    let options: any = { write: [orbitdb1.identity.id, orbitdb2.identity.id] };
+    let connected1Count = 0;
+    let connected2Count = 0;
 
-    let connected1Count = 0
-    let connected2Count = 0
+    const onConnected1 = async () => {
+      connected1Count++;
+    };
+    const onConnected2 = async () => {
+      connected2Count++;
+    };
 
-    const onConnected1 = async (peerId, heads) => {
-      ++connected1Count
-    }
+    options = { ...options, create: true };
 
-    const onConnected2 = async (peerId, heads) => {
-      ++connected2Count
-    }
-
-    console.log('Creating databases and waiting for peers to connect')
-
-    // Open the databases on the first node
-    options = Object.assign({}, options, { create: true })
-
-    // Open the databases on the first node
     for (const dbInterface of databaseInterfaces) {
-      const db = await dbInterface.open(orbitdb1, dbInterface.name, options)
-      db.events.on('join', onConnected1)
-      localDatabases.push(db)
+      const db = await dbInterface.open(orbitdb1, dbInterface.name, options);
+      db.events.on("join", onConnected1);
+      localDatabases.push(db);
     }
 
     for (const [index, dbInterface] of databaseInterfaces.entries()) {
-      const address = localDatabases[index].address.toString()
-      const db = await dbInterface.open(orbitdb2, address, options)
-      db.events.on('join', onConnected2)
-      remoteDatabases.push(db)
+      const address = localDatabases[index].address.toString();
+      const db = await dbInterface.open(orbitdb2, address, options);
+      db.events.on("join", onConnected2);
+      remoteDatabases.push(db);
     }
 
-    // Wait for the peers to connect
-    await waitFor(() => connected1Count === 3, () => true)
-    await waitFor(() => connected2Count === 3, () => true)
-
-    console.log('Peers connected')
-  })
+    await waitFor(
+      () => connected1Count === databaseInterfaces.length,
+      () => true
+    );
+    await waitFor(
+      () => connected2Count === databaseInterfaces.length,
+      () => true
+    );
+  });
 
   afterEach(async () => {
     for (const db of remoteDatabases) {
-      await db.drop()
-      await db.close()
+      await db.drop();
+      await db.close();
     }
-
     for (const db of localDatabases) {
-      await db.drop()
-      await db.close()
+      await db.drop();
+      await db.close();
     }
-  })
+    localDatabases.length = 0;
+    remoteDatabases.length = 0;
+  });
 
-  it('replicates multiple open databases', async () => {
-    const entryCount = 10
+  it("replicates multiple open databases", async () => {
+    const entryCount = 10;
 
-    // Write entries to each database
-    console.log('Writing to databases')
     for (let index = 0; index < databaseInterfaces.length; index++) {
-      const dbInterface = databaseInterfaces[index]
-      const db = localDatabases[index]
-
-      // Create an array that we use to create the db entries
-      for (let i = 1; i < entryCount + 1; i++) {
-        await dbInterface.write(db, i)
+      const dbInterface = databaseInterfaces[index];
+      const db = localDatabases[index];
+      for (let i = 1; i <= entryCount; i++) {
+        await dbInterface.write(db, i);
       }
     }
 
-    const isReplicated = async (db) => {
-      const all = await db.log.all()
-      return all.length === entryCount
-    }
+    const isReplicated = async (db: any) => {
+      const all = await db.log.all();
+      return all.length === entryCount;
+    };
 
-    // Function to check if all databases have been replicated
     const allReplicated = async () => {
       for (const db of remoteDatabases) {
-        const replicated = await isReplicated(db)
-        if (!replicated) {
-          return false
-        }
+        if (!(await isReplicated(db))) return false;
       }
-      return true
-    }
+      return true;
+    };
 
-    console.log('Waiting for replication to finish')
-
-    await waitFor(async () => await allReplicated(), () => true, 2000)
-
-    console.log('Replication finished')
+    await waitFor(
+      async () => await allReplicated(),
+      () => true,
+      2000
+    );
 
     for (let i = 0; i < databaseInterfaces.length; i++) {
-      const db = remoteDatabases[i]
-      const result = await databaseInterfaces[i].query(db)
-      strictEqual(result, entryCount)
-      strictEqual((await db.log.all()).length, entryCount)
+      const db = remoteDatabases[i];
+      const result = await databaseInterfaces[i].query(db);
+      expect(result).toBe(entryCount);
+      expect((await db.log.all()).length).toBe(entryCount);
     }
-  })
-})
+  });
+});

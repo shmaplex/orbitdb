@@ -1,94 +1,104 @@
-import { strictEqual, deepStrictEqual, notStrictEqual } from 'assert'
-import { rimraf } from 'rimraf'
-import OrbitDB from '../src/orbitdb.js'
-import { IPFSAccessController, OrbitDBAccessController, useAccessController, getAccessController } from '../src/access-controllers/index.js'
-import pathJoin from '../src/utils/path-join.js'
-import createHelia from './utils/create-helia.js'
+import { describe, it, beforeAll, afterAll, beforeEach } from "vitest";
+import { rimraf } from "rimraf";
+import OrbitDB from "../src/orbitdb.js";
+import {
+  IPFSAccessController,
+  OrbitDBAccessController,
+  useAccessController,
+  getAccessController,
+} from "../src/access-controllers/index.js";
+import pathJoin from "../src/utils/path-join.js";
+import createHelia from "./utils/create-helia.js";
 
-const type = 'custom!'
+/**
+ * @file Custom Access Controller Test Suite
+ * @description Tests for adding and using custom access controllers in OrbitDB
+ */
 
-const CustomAccessController = () => async ({ orbitdb, identities, address }) => {
-  address = pathJoin('/', type, 'controller')
+const type = "custom!";
 
-  return {
-    address
-  }
-}
+/**
+ * A simple custom access controller
+ */
+const CustomAccessController =
+  () =>
+  async ({ orbitdb, identities, address }) => {
+    address = pathJoin("/", type, "controller");
+    return { address };
+  };
 
-CustomAccessController.type = type
+CustomAccessController.type = type;
 
-describe('Add a custom access controller', function () {
-  this.timeout(5000)
+describe("Add a custom access controller", () => {
+  let ipfs: any;
+  let orbitdb: any;
 
-  let ipfs
-  let orbitdb
+  beforeAll(async () => {
+    ipfs = await createHelia();
+    orbitdb = await OrbitDB({ ipfs });
+  });
 
-  before(async () => {
-    ipfs = await createHelia()
-    orbitdb = await OrbitDB({ ipfs })
-  })
+  afterAll(async () => {
+    if (orbitdb) await orbitdb.stop();
+    if (ipfs) await ipfs.stop();
+    await rimraf("./orbitdb");
+    await rimraf("./ipfs1");
+  });
 
-  after(async () => {
-    if (orbitdb) {
-      await orbitdb.stop()
-    }
+  describe("Default supported access controllers", () => {
+    it("returns default supported access controllers", async () => {
+      expect(getAccessController("ipfs")).toEqual(IPFSAccessController);
+      expect(getAccessController("orbitdb")).toEqual(OrbitDBAccessController);
+    });
 
-    if (ipfs) {
-      await ipfs.stop()
-    }
-
-    await rimraf('./orbitdb')
-    await rimraf('./ipfs1')
-  })
-
-  describe('Default supported access controllers', function () {
-    it('returns default supported access controllers', async () => {
-      deepStrictEqual(getAccessController('ipfs'), IPFSAccessController)
-      deepStrictEqual(getAccessController('orbitdb'), OrbitDBAccessController)
-    })
-
-    it('throws and error if custom access controller hasn\'t been added', async () => {
-      let err
+    it("throws an error if custom access controller hasn't been added", async () => {
+      let err: any;
       try {
-        const db = await orbitdb.open('hello', { AccessController: CustomAccessController() })
-
-        await db.close()
-        await orbitdb.open(db.address)
-      } catch (e) {
-        err = e
+        const db = await orbitdb.open("hello", {
+          AccessController: CustomAccessController(),
+        });
+        await db.close();
+        await orbitdb.open(db.address);
+      } catch (e: any) {
+        err = e;
       }
-      notStrictEqual(err, undefined)
-      strictEqual(err.message, 'AccessController type \'custom!\' is not supported')
-    })
-  })
+      expect(err).toBeDefined();
+      expect(err.message).toBe(
+        "AccessController type 'custom!' is not supported"
+      );
+    });
+  });
 
-  describe('Custom access controller', function () {
-    before(() => {
-      useAccessController(CustomAccessController)
-    })
+  describe("Custom access controller", () => {
+    beforeEach(() => {
+      useAccessController(CustomAccessController);
+    });
 
-    it('create a database with the custom access controller', async () => {
-      const name = 'hello custom AC'
-      const db = await orbitdb.open(name, { AccessController: CustomAccessController() })
-      strictEqual(db.access.address, '/custom!/controller')
-    })
+    it("creates a database with the custom access controller", async () => {
+      const name = "hello custom AC";
+      const db = await orbitdb.open(name, {
+        AccessController: CustomAccessController(),
+      });
+      expect(db.access.address).toBe("/custom!/controller");
+    });
 
-    it('throws and error if custom access controller has no type', async () => {
-      const NoTypeCustomAccessController = () => async () => {
-      }
+    it("throws an error if custom access controller has no type", async () => {
+      const NoTypeCustomAccessController = () => async () => {};
 
-      let err
+      let err: any;
       try {
-        useAccessController(NoTypeCustomAccessController)
-      } catch (e) {
-        err = e.toString()
+        useAccessController(NoTypeCustomAccessController);
+      } catch (e: any) {
+        err = e.toString();
       }
 
-      strictEqual(err, 'Error: AccessController does not contain required field \'type\'.')
-    })
+      expect(err).toBe(
+        "Error: AccessController does not contain required field 'type'."
+      );
+    });
 
-    it('returns custom access controller after adding it', async () => {
-      deepStrictEqual(getAccessController(type), CustomAccessController)
-    })
-  })
-})
+    it("returns custom access controller after adding it", async () => {
+      expect(getAccessController(type)).toEqual(CustomAccessController);
+    });
+  });
+});

@@ -1,172 +1,173 @@
-import { strictEqual, notStrictEqual, deepStrictEqual } from 'assert'
-import OrbitDBAddress, { isValidAddress, parseAddress } from '../src/address.js'
+import { describe, it, expect, beforeAll } from "vitest";
+import OrbitDBAddress, {
+  isValidAddress,
+  parseAddress,
+} from "../src/address.js";
 
-describe('Address', function () {
-  describe('Creating an address from full address string', () => {
-    it('creates an address from full address string', () => {
-      const address = '/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const addr = OrbitDBAddress(address)
-      notStrictEqual(addr, undefined)
-    })
+/**
+ * @file OrbitDBAddress Test Suite
+ * @description Tests for creating, validating, and parsing OrbitDB addresses.
+ */
+describe("Address", () => {
+  describe("Creating an address from full address string", () => {
+    const addressStr =
+      "/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13";
 
-    it('has a protocol prefix', () => {
-      const address = '/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const addr = OrbitDBAddress(address)
-      strictEqual(addr.protocol, 'orbitdb')
-    })
+    it("creates an address from full address string", () => {
+      const addr = OrbitDBAddress(addressStr);
+      expect(addr).toBeDefined();
+    });
 
-    it('has a path', () => {
-      const address = '/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const addr = OrbitDBAddress(address)
-      strictEqual(addr.hash, 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13')
-    })
-  })
+    it("has a protocol prefix", () => {
+      const addr = OrbitDBAddress(addressStr);
+      expect(addr.protocol).toBe("orbitdb");
+    });
 
-  describe('Creating an address from hash string', () => {
-    it('creates an address', () => {
-      const address = 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const addr = OrbitDBAddress(address)
-      notStrictEqual(addr, undefined)
-    })
+    it("has a path", () => {
+      const addr = OrbitDBAddress(addressStr);
+      expect(addr.hash).toBe(
+        "zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13"
+      );
+    });
+  });
 
-    it('has a protocol prefix', () => {
-      const address = 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const addr = OrbitDBAddress(address)
-      strictEqual(addr.protocol, 'orbitdb')
-    })
+  describe("Creating an address from hash string", () => {
+    const hashStr = "zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13";
 
-    it('has a path', () => {
-      const address = 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const addr = OrbitDBAddress(address)
-      strictEqual(addr.hash, 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13')
-    })
-  })
+    it("creates an address", () => {
+      const addr = OrbitDBAddress(hashStr);
+      expect(addr).toBeDefined();
+    });
 
-  describe('Creating an address from another address', () => {
-    const address = 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
+    it("has a protocol prefix", () => {
+      const addr = OrbitDBAddress(hashStr);
+      expect(addr.protocol).toBe("orbitdb");
+    });
 
-    let addr1, addr2
+    it("has a path", () => {
+      const addr = OrbitDBAddress(hashStr);
+      expect(addr.hash).toBe(hashStr);
+    });
+  });
 
-    before(() => {
-      addr1 = OrbitDBAddress(address)
-      addr2 = OrbitDBAddress(addr1)
-    })
+  describe("Creating an address from another address", () => {
+    const hashStr = "zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13";
+    let addr1: any, addr2: any;
 
-    it('creates an address', () => {
-      deepStrictEqual(addr1, addr2)
-    })
+    beforeAll(() => {
+      addr1 = OrbitDBAddress(hashStr);
+      addr2 = OrbitDBAddress(addr1);
+    });
 
-    it('has a protocol prefix', () => {
-      strictEqual(addr2.protocol, 'orbitdb')
-    })
+    it("creates an address", () => {
+      expect(addr1).toEqual(addr2);
+    });
 
-    it('has a path', () => {
-      strictEqual(addr2.hash, 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13')
-    })
-  })
+    it("has a protocol prefix", () => {
+      expect(addr2.protocol).toBe("orbitdb");
+    });
 
-  describe('Converting address to a string', () => {
-    it('outputs a valid address string', () => {
-      const address = '/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const addr = OrbitDBAddress(address)
-      const result = addr.toString()
-      strictEqual(result, address)
-    })
-  })
+    it("has a path", () => {
+      expect(addr2.hash).toBe(hashStr);
+    });
+  });
 
-  describe('isValid Address', () => {
-    it('is not valid if address is an empty string', () => {
-      const result = isValidAddress('')
-      strictEqual(result, false)
-    })
+  describe("Converting address to a string", () => {
+    it("outputs a valid address string", () => {
+      const addressStr =
+        "/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13";
+      const addr = OrbitDBAddress(addressStr);
+      expect(addr.toString()).toBe(addressStr);
+    });
+  });
 
-    it('is a valid address', () => {
-      const address = '/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const result = isValidAddress(address)
-      strictEqual(result, true)
-    })
+  describe("isValid Address", () => {
+    it("is not valid if address is an empty string", () => {
+      expect(isValidAddress("")).toBe(false);
+    });
 
-    it('is a valid address if it\'s another instance of OrbitDBAddress', () => {
-      const address = '/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const addr = OrbitDBAddress(address)
-      const result = isValidAddress(addr)
-      strictEqual(result, true)
-    })
+    it("is a valid address", () => {
+      const addressStr =
+        "/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13";
+      expect(isValidAddress(addressStr)).toBe(true);
+    });
 
-    it('is not valid address if it\'s missing the /orbitdb prefix', () => {
-      const address = 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const result = isValidAddress(address)
+    it("is valid if it's another OrbitDBAddress instance", () => {
+      const addressStr =
+        "/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13";
+      const addr = OrbitDBAddress(addressStr);
+      expect(isValidAddress(addr)).toBe(true);
+    });
 
-      strictEqual(result, false)
-    })
+    it("is not valid if missing /orbitdb prefix", () => {
+      const addressStr = "zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13";
+      expect(isValidAddress(addressStr)).toBe(false);
+    });
 
-    it('is not a valid address if the multihash is invalid - v0', () => {
-      const address = '/orbitdb/Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzc'
-      const result = isValidAddress(address)
+    it("is not valid if multihash is invalid - v0", () => {
+      const addressStr =
+        "/orbitdb/Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzc";
+      expect(isValidAddress(addressStr)).toBe(false);
+    });
 
-      strictEqual(result, false)
-    })
+    it("is not valid if multihash is invalid - v2", () => {
+      const addressStr =
+        "/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw133333";
+      expect(isValidAddress(addressStr)).toBe(false);
+    });
 
-    it('is not a valid address if the multihash is invalid - v2', () => {
-      const address = '/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw133333'
-      const result = isValidAddress(address)
+    it("is a valid address in win32 format", () => {
+      const addressStr =
+        "\\orbitdb\\Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzcJC";
+      expect(isValidAddress(addressStr)).toBe(true);
+    });
+  });
 
-      strictEqual(result, false)
-    })
+  describe("Parsing an address", () => {
+    it("parses a valid address", () => {
+      const addressStr =
+        "/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13";
+      const result = parseAddress(addressStr);
 
-    it('is a valid address in win32 format', () => {
-      const address = '\\orbitdb\\Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzcJC'
-      const result = isValidAddress(address)
+      expect(result.protocol).toBe("orbitdb");
+      expect(result.hash).toBe(
+        "zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13"
+      );
+      expect(result.toString().startsWith("/orbitdb")).toBe(true);
+      expect(
+        result
+          .toString()
+          .includes("zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13")
+      ).toBe(true);
+    });
 
-      strictEqual(result, true)
-    })
-  })
+    it("parses a valid address in win32 format", () => {
+      const addressStr =
+        "\\orbitdb\\Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzcJC";
+      const result = parseAddress(addressStr);
 
-  describe('Parsing an address', () => {
-    it('parses a valid address', () => {
-      const address = '/orbitdb/zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'
-      const result = parseAddress(address)
+      expect(result.protocol).toBe("orbitdb");
+      expect(result.hash).toBe(
+        "Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzcJC"
+      );
+      expect(result.toString().startsWith("/orbitdb")).toBe(true);
+      expect(
+        result
+          .toString()
+          .includes("Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzcJC")
+      ).toBe(true);
+    });
 
-      strictEqual(result.protocol, 'orbitdb')
-      strictEqual(result.hash, 'zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13')
+    it("throws an error if address is empty", () => {
+      expect(() => parseAddress("")).toThrow("Not a valid OrbitDB address: ");
+    });
 
-      strictEqual(result.toString().indexOf('/orbitdb'), 0)
-      strictEqual(result.toString().indexOf('zdpuAuK3BHpS7NvMBivynypqciYCuy2UW77XYBPUYRnLjnw13'), 9)
-    })
-
-    it('parses a valid address in win32 format', () => {
-      const address = '\\orbitdb\\Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzcJC'
-      const result = parseAddress(address)
-
-      strictEqual(result.protocol, 'orbitdb')
-      strictEqual(result.hash, 'Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzcJC')
-
-      strictEqual(result.toString().indexOf('/orbitdb'), 0)
-      strictEqual(result.toString().indexOf('Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzcJC'), 9)
-    })
-
-    it('throws an error if address is empty', () => {
-      let err
-      try {
-        parseAddress('')
-      } catch (e) {
-        err = e.toString()
-      }
-      strictEqual(err, 'Error: Not a valid OrbitDB address: ')
-    })
-
-    it('throws an error if address contains too many parts', () => {
-      const address = '/orbitdb/Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzc/this-should-not-be-here'
-
-      let err
-      try {
-        parseAddress(address)
-      } catch (e) {
-        err = e
-      }
-
-      notStrictEqual(err, undefined)
-      strictEqual(err.message, `Not a valid OrbitDB address: ${address}`)
-    })
-  })
-})
+    it("throws an error if address contains too many parts", () => {
+      const addressStr =
+        "/orbitdb/Qmdgwt7w4uBsw8LXduzCd18zfGXeTmBsiR8edQ1hSfzc/this-should-not-be-here";
+      expect(() => parseAddress(addressStr)).toThrow(
+        `Not a valid OrbitDB address: ${addressStr}`
+      );
+    });
+  });
+});

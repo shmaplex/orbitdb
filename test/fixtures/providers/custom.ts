@@ -1,20 +1,57 @@
-const type = 'custom'
+/**
+ * The type of the custom identity provider.
+ */
+const type = "custom";
 
-const verifyIdentity = async (data) => { return true }
+/**
+ * Verifies the identity data.
+ * @param data - The data to verify.
+ * @returns A promise that resolves to `true` if verification is successful.
+ */
+const verifyIdentity = async (data: unknown): Promise<boolean> => {
+  return true;
+};
 
-const CustomIdentityProvider = () => async () => {
-  const getId = () => { return 'custom' }
+/**
+ * Factory function for creating a custom identity provider.
+ * @returns An async function that resolves to the identity provider API.
+ */
+const CustomIdentityProvider =
+  () =>
+  /** @returns Promise of identity provider API */
+  async () => {
+    /**
+     * Returns the ID of the identity provider.
+     * @returns The string ID of the provider.
+     */
+    const getId = (): string => {
+      return "custom";
+    };
 
-  const signIdentity = (data) => { return `signature '${data}'` }
+    /**
+     * Signs identity data.
+     * @param data - The data to sign.
+     * @returns A signature string.
+     */
+    const signIdentity = (data: unknown): string => {
+      return `signature '${data}'`;
+    };
 
-  return {
-    getId,
-    signIdentity,
-    type
-  }
-}
+    return {
+      getId,
+      signIdentity,
+      type,
+    };
+  };
 
-CustomIdentityProvider.verifyIdentity = verifyIdentity
-CustomIdentityProvider.type = type
+/**
+ * Static method to verify identity without instantiating the provider.
+ */
+CustomIdentityProvider.verifyIdentity = verifyIdentity;
 
-export default CustomIdentityProvider
+/**
+ * The type of the provider.
+ */
+CustomIdentityProvider.type = type;
+
+export default CustomIdentityProvider;

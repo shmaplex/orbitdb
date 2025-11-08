@@ -1,48 +1,73 @@
+export interface GenericIdentityProviderInstance {
+  type: string;
+  getId: (params: { id?: string }) => Promise<string>;
+  signIdentity: (
+    data: string | Uint8Array,
+    params: { id?: string }
+  ) => Promise<string>;
+}
+
+/**
+ * Custom Identity Provider
+ * Always verifies true
+ */
 const customIdentityProvider = () => {
-  const verifyIdentity = async (data) => { return true }
+  const verifyIdentity = async (data: unknown): Promise<boolean> => true;
 
-  const CustomIdentityProvider = () => () => {
-    const getId = () => { return 'custom' }
+  const CustomIdentityProvider =
+    () => async (): Promise<GenericIdentityProviderInstance> => {
+      const getId = async ({ id }: { id?: string } = {}): Promise<string> =>
+        "custom";
+      const signIdentity = async (
+        data: string | Uint8Array,
+        { id }: { id?: string } = {}
+      ): Promise<string> => `signature '${data}'`;
 
-    const signIdentity = (data) => { return `signature '${data}'` }
-
-    return {
-      getId,
-      signIdentity,
-      type: 'custom'
-    }
-  }
+      return {
+        getId,
+        signIdentity,
+        type: "custom",
+      };
+    };
 
   return {
     default: CustomIdentityProvider,
-    type: 'custom',
-    verifyIdentity
-  }
-}
+    type: "custom",
+    verifyIdentity,
+  };
+};
 
+/**
+ * Fake Identity Provider
+ * Always verifies false
+ */
 const fakeIdentityProvider = () => {
-  const verifyIdentity = async (data) => { return false }
+  const verifyIdentity = async (data: unknown): Promise<boolean> => false;
 
-  const FakeIdentityProvider = () => () => {
-    const getId = () => { return 'pubKey' }
+  const FakeIdentityProvider =
+    () => async (): Promise<GenericIdentityProviderInstance> => {
+      const getId = async ({ id }: { id?: string } = {}): Promise<string> =>
+        "pubKey";
+      const signIdentity = async (
+        data: string | Uint8Array,
+        { id }: { id?: string } = {}
+      ): Promise<string> => `false signature '${data}'`;
 
-    const signIdentity = (data) => { return `false signature '${data}'` }
-
-    return {
-      getId,
-      signIdentity,
-      type: 'fake'
-    }
-  }
+      return {
+        getId,
+        signIdentity,
+        type: "fake",
+      };
+    };
 
   return {
     default: FakeIdentityProvider,
+    type: "fake",
     verifyIdentity,
-    type: 'fake'
-  }
-}
+  };
+};
 
-const CustomIdentityProvider = customIdentityProvider()
-const FakeIdentityProvider = fakeIdentityProvider()
+const CustomIdentityProvider = customIdentityProvider();
+const FakeIdentityProvider = fakeIdentityProvider();
 
-export { CustomIdentityProvider, FakeIdentityProvider }
+export { CustomIdentityProvider, FakeIdentityProvider };

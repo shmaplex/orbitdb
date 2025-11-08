@@ -1,87 +1,122 @@
-import { strictEqual, deepStrictEqual, notStrictEqual } from 'assert'
-import { rimraf } from 'rimraf'
-import { existsSync } from 'fs'
-import { getDatabaseType } from '../src/databases/index.js'
-import { createOrbitDB, useDatabaseType, Database, KeyValueIndexed } from '../src/index.js'
-import pathJoin from '../src/utils/path-join.js'
-import createHelia from './utils/create-helia.js'
+import { describe, it, beforeAll, expect, afterAll, beforeEach } from "vitest";
+import { rimraf } from "rimraf";
+import { existsSync } from "fs";
+import { getDatabaseType } from "../src/databases/index.js";
+import {
+  createOrbitDB,
+  useDatabaseType,
+  Database,
+  KeyValueIndexed,
+} from "../src/index.js";
+import pathJoin from "../src/utils/path-join.js";
+import createHelia from "./utils/create-helia.js";
 
-const type = 'custom!'
+/**
+ * @file Custom Database Type Test Suite
+ * @description Tests for adding and using custom database types in OrbitDB
+ */
 
-const CustomStore = () => async ({ ipfs, identity, address, name, access, directory, meta, headsStorage, entryStorage, indexStorage, referencesCount, syncAutomatically, onUpdate }) => {
-  const database = await Database({ ipfs, identity, address, name, access, directory, meta, headsStorage, entryStorage, indexStorage, referencesCount, syncAutomatically, onUpdate })
+const type = "custom!";
 
-  return {
-    ...database,
-    type
-  }
-}
+/**
+ * A simple custom database type
+ */
+const CustomStore =
+  () =>
+  async ({
+    ipfs,
+    identity,
+    address,
+    name,
+    access,
+    directory,
+    meta,
+    headsStorage,
+    entryStorage,
+    indexStorage,
+    referencesCount,
+    syncAutomatically,
+    onUpdate,
+  }: any) => {
+    const database = await Database({
+      ipfs,
+      identity,
+      address,
+      name,
+      access,
+      directory,
+      meta,
+      headsStorage,
+      entryStorage,
+      indexStorage,
+      referencesCount,
+      syncAutomatically,
+      onUpdate,
+    });
 
-CustomStore.type = type
+    return {
+      ...database,
+      type,
+    };
+  };
 
-describe('Add a custom database type', function () {
-  this.timeout(5000)
+CustomStore.type = type;
 
-  let ipfs
-  let orbitdb
+describe("Add a custom database type", () => {
+  let ipfs: any;
+  let orbitdb: any;
 
-  before(async () => {
-    ipfs = await createHelia()
-    orbitdb = await createOrbitDB({ ipfs })
-  })
+  beforeAll(async () => {
+    ipfs = await createHelia();
+    orbitdb = await createOrbitDB({ ipfs });
+  });
 
-  after(async () => {
-    if (orbitdb) {
-      await orbitdb.stop()
-    }
+  afterAll(async () => {
+    if (orbitdb) await orbitdb.stop();
+    if (ipfs) await ipfs.stop();
+    await rimraf("./orbitdb");
+    await rimraf("./ipfs1");
+  });
 
-    if (ipfs) {
-      await ipfs.stop()
-    }
-
-    await rimraf('./orbitdb')
-    await rimraf('./ipfs1')
-  })
-
-  describe('Default supported database types', function () {
-    it('throws and error if custom database type hasn\'t been added', async () => {
-      let err
+  describe("Default supported database types", () => {
+    it("throws an error if custom database type hasn't been added", async () => {
+      let err: any;
       try {
-        await orbitdb.open('hello', { type })
-      } catch (e) {
-        err = e
+        await orbitdb.open("hello", { type });
+      } catch (e: any) {
+        err = e;
       }
-      notStrictEqual(err, undefined)
-      strictEqual(err.message, 'Unsupported database type: \'custom!\'')
-    })
-  })
+      expect(err).toBeDefined();
+      expect(err.message).toBe("Unsupported database type: 'custom!'");
+    });
+  });
 
-  describe('KeyValue Indexed database type', function () {
-    it('replace keyvalue with keyvalue-indexed', async () => {
-      useDatabaseType(KeyValueIndexed)
-      const name = 'hello keyvalue-indexed database'
-      const db = await orbitdb.open(name, { type: 'keyvalue' })
+  describe("KeyValue Indexed database type", () => {
+    it("replaces keyvalue with keyvalue-indexed", async () => {
+      useDatabaseType(KeyValueIndexed);
+      const name = "hello keyvalue-indexed database";
+      const db = await orbitdb.open(name, { type: "keyvalue" });
 
-      const indexDirectory = pathJoin('./orbitdb', `./${db.address}/_index/`)
+      const indexDirectory = pathJoin("./orbitdb", `./${db.address}/_index/`);
 
-      strictEqual(await existsSync(indexDirectory), true)
-    })
-  })
+      expect(existsSync(indexDirectory)).toBe(true);
+    });
+  });
 
-  describe('Custom database type', function () {
-    before(() => {
-      useDatabaseType(CustomStore)
-    })
+  describe("Custom database type", () => {
+    beforeEach(() => {
+      useDatabaseType(CustomStore);
+    });
 
-    it('create a database with the custom database type', async () => {
-      const name = 'hello custom database'
-      const db = await orbitdb.open(name, { type })
-      strictEqual(db.type, type)
-      strictEqual(db.name, name)
-    })
+    it("creates a database with the custom database type", async () => {
+      const name = "hello custom database";
+      const db = await orbitdb.open(name, { type });
+      expect(db.type).toBe(type);
+      expect(db.name).toBe(name);
+    });
 
-    it('returns custom database type after adding it', async () => {
-      deepStrictEqual(getDatabaseType(type), CustomStore)
-    })
-  })
-})
+    it("returns custom database type after adding it", async () => {
+      expect(getDatabaseType(type)).toEqual(CustomStore);
+    });
+  });
+});

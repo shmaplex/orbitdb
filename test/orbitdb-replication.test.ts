@@ -1,194 +1,196 @@
-import { deepStrictEqual, strictEqual } from 'assert'
-import { rimraf } from 'rimraf'
-import { createOrbitDB } from '../src/index.js'
-import connectPeers from './utils/connect-nodes.js'
-import waitFor from './utils/wait-for.js'
-import createHelia from './utils/create-helia.js'
-import { CID } from 'multiformats/cid'
-import { base58btc } from 'multiformats/bases/base58'
+import { deepStrictEqual, strictEqual } from "assert";
+import { rimraf } from "rimraf";
+import { describe, it, beforeAll, afterAll, afterEach } from "vitest";
+import { createOrbitDB } from "../src/index.js";
+import connectPeers from "./utils/connect-nodes.js";
+import waitFor from "./utils/wait-for.js";
+import createHelia from "./utils/create-helia.js";
+import { CID } from "multiformats/cid";
+import { base58btc } from "multiformats/bases/base58";
 
-describe('Replicating databases', function () {
-  this.timeout(10000)
+describe("Replicating databases", () => {
+  let ipfs1: any, ipfs2: any;
+  let orbitdb1: any, orbitdb2: any;
 
-  let ipfs1, ipfs2
-  let orbitdb1, orbitdb2
+  beforeAll(async () => {
+    ipfs1 = await createHelia({ directory: "./ipfs1" });
+    ipfs2 = await createHelia({ directory: "./ipfs2" });
+    await connectPeers(ipfs1, ipfs2);
 
-  before(async () => {
-    ipfs1 = await createHelia({ directory: './ipfs1' })
-    ipfs2 = await createHelia({ directory: './ipfs2' })
-    await connectPeers(ipfs1, ipfs2)
+    orbitdb1 = await createOrbitDB({
+      ipfs: ipfs1,
+      id: "user1",
+      directory: "./orbitdb1",
+    });
+    orbitdb2 = await createOrbitDB({
+      ipfs: ipfs2,
+      id: "user2",
+      directory: "./orbitdb2",
+    });
+  });
 
-    orbitdb1 = await createOrbitDB({ ipfs: ipfs1, id: 'user1', directory: './orbitdb1' })
-    orbitdb2 = await createOrbitDB({ ipfs: ipfs2, id: 'user2', directory: './orbitdb2' })
-  })
+  afterAll(async () => {
+    await orbitdb1.stop();
+    await orbitdb2.stop();
+    await ipfs1.blockstore.child.child.child.close();
+    await ipfs2.blockstore.child.child.child.close();
+    await ipfs1.stop();
+    await ipfs2.stop();
 
-  after(async () => {
-    await orbitdb1.stop()
-    await orbitdb2.stop()
-    await ipfs1.blockstore.child.child.child.close()
-    await ipfs2.blockstore.child.child.child.close()
-    await ipfs1.stop()
-    await ipfs2.stop()
+    await rimraf("./orbitdb1");
+    await rimraf("./orbitdb2");
+    await rimraf("./ipfs1");
+    await rimraf("./ipfs2");
+  });
 
-    await rimraf('./orbitdb1')
-    await rimraf('./orbitdb2')
-    await rimraf('./ipfs1')
-    await rimraf('./ipfs2')
-  })
+  describe("replicating a database", () => {
+    const amount = 129;
+    const expected = Array.from({ length: amount }, (_, i) => "hello" + i);
 
-  describe('replicating a database', () => {
-    const amount = 128 + 1
+    let db1: any, db2: any;
 
-    const expected = []
-    for (let i = 0; i < amount; i++) {
-      expected.push('hello' + i)
-    }
-
-    let db1, db2
-
-    before(async () => {
-      db1 = await orbitdb1.open('helloworld', { referencesCount: 0 })
-
-      console.time('write')
-      for (let i = 0; i < expected.length; i++) {
-        await db1.add(expected[i])
+    beforeAll(async () => {
+      db1 = await orbitdb1.open("helloworld", { referencesCount: 0 });
+      console.time("write");
+      for (const val of expected) {
+        await db1.add(val);
       }
-      console.timeEnd('write')
-    })
+      console.timeEnd("write");
+    });
 
     afterEach(async () => {
-      await db2.close()
-    })
+      if (db2) await db2.close();
+    });
 
-    it('returns all entries in the replicated database', async () => {
-      console.time('replicate')
+    it("returns all entries in the replicated database", async () => {
+      console.time("replicate");
+      let replicated = false;
 
-      let replicated = false
+      const onJoin = async () => {
+        replicated = true;
+      };
+      const onError = (err: any) => console.error(err);
 
-      const onJoin = async (peerId, heads) => {
-        replicated = true
-      }
+      db2 = await orbitdb2.open(db1.address);
 
-      const onError = (err) => {
-        console.error(err)
-      }
+      db2.events.on("join", onJoin);
+      db2.events.on("error", onError);
+      db1.events.on("error", onError);
 
-      db2 = await orbitdb2.open(db1.address)
+      await waitFor(
+        () => replicated,
+        () => true
+      );
 
-      db2.events.on('join', onJoin)
-      db2.events.on('error', onError)
-      db1.events.on('error', onError)
+      console.time("query 1");
+      const eventsFromDb2: any[] = [];
+      for await (const event of db2.iterator()) eventsFromDb2.unshift(event);
+      console.timeEnd("query 1");
 
-      await waitFor(() => replicated, () => true)
+      console.timeEnd("replicate");
+      deepStrictEqual(
+        eventsFromDb2.map((e) => e.value),
+        expected
+      );
 
-      console.time('query 1')
-      const eventsFromDb2 = []
-      for await (const event of db2.iterator()) {
-        eventsFromDb2.unshift(event)
-      }
-      console.timeEnd('query 1')
+      console.time("query 2");
+      const eventsFromDb1: any[] = [];
+      for await (const event of db1.iterator()) eventsFromDb1.unshift(event);
+      console.timeEnd("query 2");
 
-      console.timeEnd('replicate')
+      deepStrictEqual(
+        eventsFromDb1.map((e) => e.value),
+        expected
+      );
+      console.log("events:", amount);
+    });
 
-      deepStrictEqual(eventsFromDb2.map(e => e.value), expected)
+    it("returns all entries after recreating OrbitDB/IPFS instances", async () => {
+      console.time("replicate");
+      let replicated = false;
 
-      console.time('query 2')
-      const eventsFromDb1 = []
-      for await (const event of db1.iterator()) {
-        eventsFromDb1.unshift(event)
-      }
-      console.timeEnd('query 2')
+      const onJoin = async () => {
+        replicated = true;
+      };
+      const onError = (err: any) => console.error(err);
 
-      deepStrictEqual(eventsFromDb1.map(e => e.value), expected)
+      db2 = await orbitdb2.open(db1.address);
+      db2.events.on("join", onJoin);
+      db2.events.on("error", onError);
+      db1.events.on("error", onError);
 
-      console.log('events:', amount)
-    })
+      await waitFor(
+        () => replicated,
+        () => true
+      );
 
-    it('returns all entries in the replicated database after recreating orbitdb/ipfs instances', async () => {
-      console.time('replicate')
+      console.time("query 1");
+      const eventsFromDb2: any[] = [];
+      for await (const event of db2.iterator()) eventsFromDb2.unshift(event);
+      console.timeEnd("query 1");
+      console.timeEnd("replicate");
 
-      let replicated = false
+      deepStrictEqual(
+        eventsFromDb2.map((e) => e.value),
+        expected
+      );
 
-      const onJoin = async (peerId, heads) => {
-        replicated = true
-      }
+      // Recreate IPFS/OrbitDB
+      await orbitdb1.stop();
+      await orbitdb2.stop();
+      await ipfs1.blockstore.child.child.child.close();
+      await ipfs2.blockstore.child.child.child.close();
+      await ipfs1.stop();
+      await ipfs2.stop();
 
-      const onError = (err) => {
-        console.error(err)
-      }
+      ipfs1 = await createHelia({ directory: "./ipfs1" });
+      ipfs2 = await createHelia({ directory: "./ipfs2" });
+      await connectPeers(ipfs1, ipfs2);
 
-      db2 = await orbitdb2.open(db1.address)
+      orbitdb1 = await createOrbitDB({
+        ipfs: ipfs1,
+        id: "user1",
+        directory: "./orbitdb1",
+      });
+      orbitdb2 = await createOrbitDB({
+        ipfs: ipfs2,
+        id: "user2",
+        directory: "./orbitdb2",
+      });
 
-      db2.events.on('join', onJoin)
-      db2.events.on('error', onError)
-      db1.events.on('error', onError)
+      db1 = await orbitdb1.open("helloworld", { referencesCount: 0 });
+      db2 = await orbitdb2.open(db1.address);
 
-      await waitFor(() => replicated, () => true)
+      console.time("query 2");
+      const eventsFromDb1: any[] = [];
+      for await (const event of db1.iterator()) eventsFromDb1.unshift(event);
+      console.timeEnd("query 2");
 
-      console.time('query 1')
-      const eventsFromDb2 = []
-      for await (const event of db2.iterator()) {
-        eventsFromDb2.unshift(event)
-      }
-      console.timeEnd('query 1')
+      deepStrictEqual(
+        eventsFromDb1.map((e) => e.value),
+        expected
+      );
+      console.log("events:", amount);
+    });
 
-      console.timeEnd('replicate')
+    it("pins all entries in the replicated database", async () => {
+      const db1 = await orbitdb1.open("helloworld", { referencesCount: 0 });
+      const hash = await db1.add("hello world");
 
-      deepStrictEqual(eventsFromDb2.map(e => e.value), expected)
+      let replicated = false;
+      const onJoin = async () => (replicated = true);
 
-      await orbitdb1.stop()
-      await orbitdb2.stop()
-      // TODO: Strange issue with ClassicLevel. Causes subsequent Helia
-      // instantiations to error with db closed. Explicitly closing the
-      // nested ClassicLevel db seems to resolve the issue. Requires further
-      // investigation.
-      await ipfs1.blockstore.child.child.child.close()
-      await ipfs2.blockstore.child.child.child.close()
-      await ipfs1.stop()
-      await ipfs2.stop()
+      const db2 = await orbitdb2.open(db1.address);
+      db2.events.on("join", onJoin);
 
-      ipfs1 = await createHelia({ directory: './ipfs1' })
-      ipfs2 = await createHelia({ directory: './ipfs2' })
+      await waitFor(
+        () => replicated,
+        () => true
+      );
 
-      await connectPeers(ipfs1, ipfs2)
-
-      orbitdb1 = await createOrbitDB({ ipfs: ipfs1, id: 'user1', directory: './orbitdb1' })
-      orbitdb2 = await createOrbitDB({ ipfs: ipfs2, id: 'user2', directory: './orbitdb2' })
-
-      db1 = await orbitdb1.open('helloworld', { referencesCount: 0 })
-      db2 = await orbitdb2.open(db1.address)
-
-      console.time('query 2')
-      const eventsFromDb1 = []
-      for await (const event of db1.iterator()) {
-        eventsFromDb1.unshift(event)
-      }
-      console.timeEnd('query 2')
-
-      deepStrictEqual(eventsFromDb1.map(e => e.value), expected)
-
-      console.log('events:', amount)
-    })
-
-    it('pins all entries in the replicated database', async () => {
-      const db1 = await orbitdb1.open('helloworld', { referencesCount: 0 })
-      const hash = await db1.add('hello world')
-
-      let replicated = false
-
-      const onJoin = async (peerId, heads) => {
-        replicated = true
-      }
-
-      const db2 = await orbitdb2.open(db1.address)
-
-      db2.events.on('join', onJoin)
-
-      await waitFor(() => replicated, () => true)
-
-      const cid = CID.parse(hash, base58btc)
-      strictEqual(await ipfs1.pins.isPinned(cid), true)
-      strictEqual(await ipfs2.pins.isPinned(cid), true)
-    })
-  })
-})
+      const cid = CID.parse(hash, base58btc);
+      strictEqual(await ipfs1.pins.isPinned(cid), true);
+      strictEqual(await ipfs2.pins.isPinned(cid), true);
+    });
+  });
+});

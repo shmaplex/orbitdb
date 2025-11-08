@@ -3,7 +3,7 @@ import type { IPFS } from "ipfs-core-types";
 import { pipe } from "it-pipe";
 import PQueue from "p-queue";
 import { TimeoutController } from "timeout-abort-controller";
-import type { LogInstance } from "./oplog";
+import type { LogType } from "./oplog";
 import { Entry } from "./oplog";
 import type { Entry as EntryType } from "./oplog/entry";
 import pathJoin from "./utils/path-join";
@@ -22,7 +22,7 @@ export interface SyncInstance {
 
 interface SyncParams {
   ipfs: IPFS;
-  log: LogInstance;
+  log: LogType;
   events?: EventEmitter;
   onSynced?: OnSynced;
   start?: boolean;

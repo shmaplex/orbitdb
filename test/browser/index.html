@@ -1,21 +1,38 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
-    <meta charset="utf-8">
-    <title>Mocha Tests</title>
-    <link href="https://unpkg.com/mocha@10.2.0/mocha.css" rel="stylesheet" />
-    <script src="https://unpkg.com/mocha@10.2.0/mocha.js"></script>
+  <meta charset="UTF-8" />
+  <title>Vitest Browser Tests</title>
+  <style>
+    html,
+    body {
+      background: #0e0e0e;
+      color: #f0f0f0;
+      font-family: monospace;
+    }
+
+    #output {
+      white-space: pre-wrap;
+      padding: 1rem;
+    }
+  </style>
 </head>
+
 <body>
-<div id="mocha"></div>
+  <h2>Vitest Browser Runner</h2>
+  <div id="output"></div>
+  <script type="module">
+    import { run } from 'vitest/browser'
+    import './bundle.js' // your built test bundle (Vite can build this)
 
-<script>
-  mocha.setup({ ui: "bdd", globals: ['sprintf', 'vsprintf'] })
-  mocha.checkLeaks()
-</script>
-<script src="./bundle.js"></script>
-<script>
-  mocha.run()
-</script>
-
+    const output = document.getElementById('output')
+    run().then((results) => {
+      output.textContent = `✅ ${results.passed.length} passed, ❌ ${results.failed.length} failed`
+    }).catch((err) => {
+      output.textContent = `💥 Error: ${err.message}`
+    })
+  </script>
 </body>
+
 </html>

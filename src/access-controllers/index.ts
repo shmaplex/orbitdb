@@ -18,13 +18,17 @@ import OrbitDBAccessController from "./orbitdb";
 export interface AccessControllerInstance {
   /**
    * Determines whether a given log entry is allowed to be appended.
-   * @param entry - The log entry to verify.
-   * @returns Promise resolving to `true` if allowed, `false` otherwise.
    */
   canAppend: (entry: EntryType) => Promise<boolean>;
 
   /** Optional address of the access controller */
   address?: string;
+
+  /** The controller type identifier (e.g., 'ipfs', 'orbitdb') */
+  type: string;
+
+  /** Array of authorized writer identities */
+  write?: string[];
 
   /** Optional cleanup method */
   close?: () => Promise<void>;

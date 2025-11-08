@@ -1,20 +1,57 @@
-const type = 'fake'
+/**
+ * The type of the fake identity provider.
+ */
+const type = "fake";
 
-const verifyIdentity = async (data) => { return false }
+/**
+ * Verifies the identity data.
+ * @param data - The data to verify.
+ * @returns A promise that resolves to `false` because this is a fake provider.
+ */
+const verifyIdentity = async (data: unknown): Promise<boolean> => {
+  return false;
+};
 
-const FakeIdentityProvider = () => async () => {
-  const getId = () => { return 'pubKey' }
+/**
+ * Factory function for creating a fake identity provider.
+ * @returns An async function that resolves to the identity provider API.
+ */
+const FakeIdentityProvider =
+  () =>
+  /** @returns Promise of identity provider API */
+  async () => {
+    /**
+     * Returns the ID of the identity provider.
+     * @returns The string ID of the provider.
+     */
+    const getId = (): string => {
+      return "pubKey";
+    };
 
-  const signIdentity = (data) => { return `false signature '${data}'` }
-  
-  return {
-    getId,
-    signIdentity,
-    type
-  }
-}
+    /**
+     * Signs identity data.
+     * @param data - The data to sign.
+     * @returns A fake signature string.
+     */
+    const signIdentity = (data: unknown): string => {
+      return `false signature '${data}'`;
+    };
 
-FakeIdentityProvider.verifyIdentity = verifyIdentity
-FakeIdentityProvider.type = type
+    return {
+      getId,
+      signIdentity,
+      type,
+    };
+  };
 
-export default FakeIdentityProvider
+/**
+ * Static method to verify identity without instantiating the provider.
+ */
+FakeIdentityProvider.verifyIdentity = verifyIdentity;
+
+/**
+ * The type of the provider.
+ */
+FakeIdentityProvider.type = type;
+
+export default FakeIdentityProvider;
