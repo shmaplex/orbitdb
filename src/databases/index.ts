@@ -16,58 +16,38 @@ export interface DatabaseInstance extends GeneralDatabaseInstance {
   address: string;
   name?: string;
   type: string;
-
-  // Now events is fully compatible with EventEmitter
   events: EventEmitter;
 }
 
-/** Generic database module interface (curried style) */
-export interface DatabaseType<
-  Inst extends DatabaseInstance = DatabaseInstance,
-  Options = any,
-  Ctx = any
-> {
+/** Curried database module type (the factory) */
+export interface DatabaseType {
   type: string;
-  (options?: Options): (context: Ctx) => Promise<Inst>;
+  (options?: any): (context?: any) => Promise<DatabaseInstance>;
 }
 
 /** Dictionary of database types keyed by `type` */
-export const databaseTypes: Record<string, DatabaseType> = {};
+const databaseTypes: Record<string, DatabaseType> = {};
 
 /**
  * Registers a new database type.
- * @param database A Database module with a `type` field.
  */
-export const useDatabaseType = <
-  Inst extends DatabaseInstance,
-  Options = any,
-  Ctx = any
->(
-  database: DatabaseType<Inst, Options, Ctx>
-): void => {
+const useDatabaseType = (database: DatabaseType): void => {
   if (!database.type) {
     throw new Error("Database type does not contain required field 'type'.");
   }
-  if (databaseTypes[database.type]) {
-    throw new Error(`Database type '${database.type}' already added.`);
-  }
-  databaseTypes[database.type] = database as DatabaseType;
+  databaseTypes[database.type] = database;
 };
 
 /**
- * Retrieves a database module by type.
+ * Retrieves a database module by type and returns it.
+ *
+ * Technically returns the curried factory, but typed as DatabaseInstance for TS compatibility.
  */
-export const getDatabaseType = <
-  Inst extends DatabaseInstance,
-  Options = any,
-  Ctx = any
->(
-  type: string
-): DatabaseType<Inst, Options, Ctx> => {
+const getDatabaseType = (type: string): DatabaseType => {
   if (!type) throw new Error("Type not specified");
-  const dbType = databaseTypes[type];
-  if (!dbType) throw new Error(`Unsupported database type: '${type}'`);
-  return dbType as DatabaseType<Inst, Options, Ctx>;
+  const dbFactory = databaseTypes[type];
+  if (!dbFactory) throw new Error(`Unsupported database type: '${type}'`);
+  return dbFactory;
 };
 
 // Register default database types
@@ -76,4 +56,11 @@ useDatabaseType(Documents);
 useDatabaseType(KeyValue);
 useDatabaseType(KeyValueIndexed);
 
-export { Documents, Events, KeyValue, KeyValueIndexed };
+export {
+  useDatabaseType,
+  getDatabaseType,
+  Documents,
+  Events,
+  KeyValue,
+  KeyValueIndexed,
+};

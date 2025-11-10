@@ -7,6 +7,7 @@ import { copy } from "fs-extra";
 import KeyStore, { signMessage, verifyMessage } from "../src/key-store.js";
 import LevelStorage from "../src/storage/level.js";
 import testKeysPath from "./fixtures/test-keys-path.js";
+import { PrivateKey } from "@libp2p/interface";
 
 const defaultPath = "./keystore";
 const keysPath = "./testkeys";
@@ -198,16 +199,17 @@ describe("KeyStore", () => {
       });
 
       it("throws an error if no key is passed", async () => {
-        await expect(signMessage(null, "data data data")).rejects.toThrow(
+        const key = null as unknown as PrivateKey;
+        await expect(signMessage(key, "data data data")).rejects.toThrow(
           "No signing key given"
         );
       });
 
       it("throws an error if no data is passed", async () => {
-        const key = "key_1";
-        await expect(signMessage(key)).rejects.toThrow(
-          "Given input data was undefined"
-        );
+        const key = await keystore.getKey("userA");
+        await expect(
+          signMessage(key, undefined as unknown as string)
+        ).rejects.toThrow("Given input data was undefined");
       });
     });
 

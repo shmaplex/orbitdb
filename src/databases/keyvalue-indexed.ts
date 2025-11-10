@@ -36,11 +36,7 @@ export interface KeyValueIndexedContext extends DatabaseContext {
 /**
  * Factory: KeyValueIndexed Database
  */
-const KeyValueIndexed: DatabaseType<
-  KeyValueIndexedInstance,
-  void,
-  KeyValueIndexedContext
-> =
+const KeyValueIndexed: DatabaseType =
   () =>
   async (context: KeyValueIndexedContext): Promise<KeyValueIndexedInstance> => {
     const { directory, address } = context;

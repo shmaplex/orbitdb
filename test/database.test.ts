@@ -1,8 +1,8 @@
 import {
   describe,
   it,
-  before,
-  after,
+  beforeAll,
+  afterAll,
   beforeEach,
   afterEach,
   expect,
@@ -15,7 +15,7 @@ import { Database, KeyStore, Identities } from "../src/index.js";
 import LevelStorage from "../src/storage/level.js";
 import MemoryStorage from "../src/storage/memory.js";
 import testKeysPath from "./fixtures/test-keys-path.js";
-import createHelia from "./utils/create-helia.js";
+import { createHeliaNode as createHelia } from "./utils/create-helia";
 
 const keysPath = "./testkeys";
 
@@ -35,7 +35,7 @@ describe("Database", () => {
     },
   };
 
-  before(async () => {
+  beforeAll(async () => {
     ipfs = await createHelia();
     await copy(testKeysPath, keysPath);
     keystore = await KeyStore({ path: keysPath });
@@ -43,7 +43,7 @@ describe("Database", () => {
     testIdentity = await identities.createIdentity({ id: "userA" });
   });
 
-  after(async () => {
+  afterAll(async () => {
     if (ipfs) await ipfs.stop();
     if (keystore) await keystore.close();
     await rimraf(keysPath);
@@ -59,7 +59,7 @@ describe("Database", () => {
       ipfs,
       identity: testIdentity,
       address: databaseId,
-      accessController,
+      access: accessController,
       directory: "./orbitdb",
     });
     const expected = "zdpuAwhx6xVpnMPUA7Q4JrvZsyoti5wZ18iDeFwBjPAwsRNof";
@@ -76,7 +76,7 @@ describe("Database", () => {
         ipfs,
         identity: testIdentity,
         address: databaseId,
-        accessController,
+        access: accessController,
       });
 
       const op1 = { op: "PUT", key: 1, value: "record 1 on db 1 version 1" };
@@ -113,7 +113,7 @@ describe("Database", () => {
         ipfs,
         identity: testIdentity,
         address: databaseId,
-        accessController,
+        access: accessController,
         directory: "./custom-directory",
       });
       const op1 = { op: "PUT", key: 1, value: "record 1 on db 1 version 1" };
@@ -151,7 +151,7 @@ describe("Database", () => {
         ipfs,
         identity: testIdentity,
         address: databaseId,
-        accessController,
+        access: accessController,
         directory: "./orbitdb",
         headsStorage,
       });
@@ -183,7 +183,7 @@ describe("Database", () => {
         ipfs,
         identity: testIdentity,
         address: databaseId,
-        accessController,
+        access: accessController,
         directory: "./orbitdb",
         headsStorage,
         entryStorage,
@@ -217,7 +217,7 @@ describe("Database", () => {
         ipfs,
         identity: testIdentity,
         address: databaseId,
-        accessController,
+        access: accessController,
         directory: "./orbitdb",
       });
     });

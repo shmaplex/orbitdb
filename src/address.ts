@@ -8,7 +8,7 @@ import { base58btc } from "multiformats/bases/base58";
 import { CID } from "multiformats/cid";
 import { posixJoin } from "./utils/path-join.js";
 
-export interface OrbitDBAddress {
+export interface OrbitDBAddressType {
   protocol: "orbitdb";
   hash: string;
   address: string;
@@ -18,7 +18,9 @@ export interface OrbitDBAddress {
 /**
  * Checks if a string is a valid OrbitDB database address.
  */
-export const isValidAddress = (address: string | OrbitDBAddress): boolean => {
+export const isValidAddress = (
+  address: string | OrbitDBAddressType
+): boolean => {
   const addrString = address.toString();
 
   if (
@@ -46,8 +48,8 @@ export const isValidAddress = (address: string | OrbitDBAddress): boolean => {
  * Parses a given OrbitDB address string into an OrbitDBAddress object.
  */
 export const parseAddress = (
-  address: string | OrbitDBAddress
-): OrbitDBAddress => {
+  address: string | OrbitDBAddressType
+): OrbitDBAddressType => {
   if (!address) {
     throw new Error(`Not a valid OrbitDB address: ${address}`);
   }
@@ -56,15 +58,15 @@ export const parseAddress = (
     throw new Error(`Not a valid OrbitDB address: ${address}`);
   }
 
-  return OrbitDBAddressFactory(address);
+  return OrbitDBAddress(address);
 };
 
 /**
  * Creates a new OrbitDBAddress instance.
  */
-export const OrbitDBAddressFactory = (
-  address: string | OrbitDBAddress
-): OrbitDBAddress => {
+export const OrbitDBAddress = (
+  address: string | OrbitDBAddressType
+): OrbitDBAddressType => {
   // Return as-is if already a proper object
   if (
     typeof address !== "string" &&
@@ -92,4 +94,4 @@ export const OrbitDBAddressFactory = (
   };
 };
 
-export default OrbitDBAddressFactory;
+export default OrbitDBAddress;

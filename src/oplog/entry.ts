@@ -10,15 +10,15 @@ const hashStringEncoding = base58btc;
 
 /** Represents a log entry */
 export interface Entry {
-  id: string;
-  payload: unknown;
-  next: string[];
-  refs: string[];
-  clock: ClockType;
+  id?: string;
+  payload?: unknown;
+  next?: string[];
+  refs?: string[];
+  clock?: ClockType;
   v: number;
-  key: string;
-  identity: string;
-  sig: string;
+  key?: string;
+  identity?: string;
+  sig?: string;
   bytes?: Uint8Array;
   _payload?: unknown;
   hash?: string;

@@ -1,11 +1,12 @@
 /**
  * @module Database
  * @description
- * Database is the base class for OrbitDB data stores and handles lower-level
- * add operations and database syncing using IPFS.
+ * Database is the base class for OrbitDB-style data stores. Handles low-level
+ * add operations, log management, and database syncing using IPFS/Helia.
  */
 
 import { EventEmitter } from "node:events";
+import type { Helia } from "helia";
 import type { IPFS } from "ipfs-core-types";
 import PQueue from "p-queue";
 import type { OrbitDBAccessControllerInstance } from "./access-controllers";
@@ -37,13 +38,13 @@ export type AccessControllerInput =
   | OrbitDBAccessControllerInstance
   | (() => Promise<OrbitDBAccessControllerInstance>);
 
-/** Context for database operations */
-export interface DatabaseContext<TUpdate = any> {
-  ipfs: IPFS;
+// Accept either IPFS or Helia-like nodes
+export interface DatabaseContext {
+  ipfs: IPFS | Helia;
   identity?: IdentitiesInstance;
   address: string;
-  name?: string; // Keep optional here
-  access?: any;
+  name?: string;
+  access?: AccessControllerInput;
   directory?: string;
   meta?: Record<string, any>;
   headsStorage?: StorageBackend;
@@ -51,13 +52,13 @@ export interface DatabaseContext<TUpdate = any> {
   indexStorage?: StorageBackend;
   referencesCount?: number;
   syncAutomatically?: boolean;
-  onUpdate?: (log: LogType, entry: EntryType) => void; // Fix: 2 parameters
+  onUpdate?: (log: LogType, entry: EntryType) => void;
   encryption?: Encryption;
 }
 
 export interface DatabaseInstance {
   address: string;
-  name?: string; // Keep optional here since it might not be provided
+  name?: string;
   identity?: IdentitiesInstance;
   meta: Record<string, any>;
   close: () => Promise<void>;
@@ -91,7 +92,7 @@ const Database = async ({
   meta = meta || {};
   const refCount = referencesCount ?? defaultReferencesCount;
 
-  // --- Setup storage backends ---
+  // --- Storage backends ---
   entryStorage =
     entryStorage ||
     (await ComposedStorage(
@@ -113,7 +114,7 @@ const Database = async ({
       await LevelStorage({ path: pathJoin(directory, "/log/_index/") })
     ));
 
-  // --- Resolve access controller if factory ---
+  // --- Resolve access controller ---
   let resolvedAccess: OrbitDBAccessControllerInstance | undefined;
   if (typeof access === "function") {
     resolvedAccess = await access();
@@ -121,7 +122,7 @@ const Database = async ({
     resolvedAccess = access;
   }
 
-  // --- Initialize the log ---
+  // --- Initialize log ---
   const log: LogType = await Log(identity, {
     logId: address,
     access: resolvedAccess,
@@ -134,39 +135,37 @@ const Database = async ({
   const events = new EventEmitter();
   const queue = new PQueue({ concurrency: 1 });
 
-  // --- Add operation to log ---
+  // --- Add operation ---
   const addOperation = async (op: unknown): Promise<string> => {
-    const task = async () => {
+    // Wrap the queued task in a function that always returns string
+    const task = async (): Promise<string> => {
       const entry = await log.append(op, { referencesCount: refCount });
       await sync.add(entry);
+
       if (onUpdate) await onUpdate(log, entry);
       events.emit("update", entry);
 
       if (!entry.hash) {
-        throw new Error("Entry hash is undefined after append"); // safeguard
+        throw new Error("Entry hash is undefined after append");
       }
 
-      return entry.hash; // now TypeScript knows this is a string
+      return entry.hash;
     };
-    return queue.add(task);
+
+    return queue.add(task) as Promise<string>;
   };
 
-  // --- Apply external operation (during sync) ---
+  // --- Apply operation during sync ---
   const applyOperation = async (entry: EntryType): Promise<void> => {
-    const task = async () => {
-      try {
-        if (entry) {
-          const updated = await log.joinEntry(entry);
-          if (updated) {
-            if (onUpdate) await onUpdate(log, entry);
-            events.emit("update", entry);
-          }
+    await queue.add(async () => {
+      if (entry) {
+        const updated = await log.joinEntry(entry);
+        if (updated) {
+          if (onUpdate) await onUpdate(log, entry);
+          events.emit("update", entry);
         }
-      } catch (e) {
-        console.error(e);
       }
-    };
-    await queue.add(task);
+    });
   };
 
   // --- Initialize sync ---

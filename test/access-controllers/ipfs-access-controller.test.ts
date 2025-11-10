@@ -1,16 +1,15 @@
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
+import { strictEqual, deepStrictEqual, notStrictEqual } from "assert";
 import { rimraf } from "rimraf";
 import type { Helia } from "helia";
 import type { KeyStoreInstance } from "../../src/key-store";
-import type {
-  IdentitiesInstance,
-  IdentityType as Identity,
-} from "../../src/identities";
+import type { IdentitiesInstance, IdentityType } from "../../src/identities";
 import Keystore from "../../src/key-store";
 import Identities from "../../src/identities/identities";
 import IPFSAccessController from "../../src/access-controllers/ipfs";
 import connectPeers from "../utils/connect-nodes";
-import createHelia from "../utils/create-helia";
+import { createHeliaNode } from "../utils/create-helia";
+import type { EntryType } from "../../src/oplog";
 
 describe("IPFSAccessController", () => {
   const dbPath1 = "./orbitdb/tests/ipfs-access-controller/1";
@@ -22,14 +21,16 @@ describe("IPFSAccessController", () => {
   let keystore2: KeyStoreInstance;
   let identities1: IdentitiesInstance;
   let identities2: IdentitiesInstance;
-  let testIdentity1: Identity;
-  let testIdentity2: Identity;
-  let orbitdb1: { ipfs: Helia; identity: Identity };
-  let orbitdb2: { ipfs: Helia; identity: Identity };
-  let accessController: any;
+  let testIdentity1: IdentityType;
+  let testIdentity2: IdentityType;
+  let orbitdb1: { ipfs: Helia; identity: IdentityType };
+  let orbitdb2: { ipfs: Helia; identity: IdentityType };
+  let accessController: Awaited<
+    ReturnType<ReturnType<typeof IPFSAccessController>>
+  >;
 
   beforeAll(async () => {
-    [ipfs1, ipfs2] = await Promise.all([createHelia(), createHelia()]);
+    [ipfs1, ipfs2] = await Promise.all([createHeliaNode(), createHeliaNode()]);
     await connectPeers(ipfs1, ipfs2);
 
     keystore1 = await Keystore({ path: dbPath1 + "/keys" });
@@ -58,60 +59,60 @@ describe("IPFSAccessController", () => {
 
   describe("Default write access", () => {
     beforeAll(async () => {
-      accessController = await IPFSAccessController({
+      accessController = await IPFSAccessController()({
         orbitdb: orbitdb1,
         identities: identities1,
       });
     });
 
     it("creates an access controller", () => {
-      expect(accessController).not.toBeNull();
-      expect(accessController).not.toBeUndefined();
+      notStrictEqual(accessController, null);
+      notStrictEqual(accessController, undefined);
     });
 
     it("sets the controller type", () => {
-      expect(accessController.type).toBe("ipfs");
+      strictEqual(accessController.type, "ipfs");
     });
 
     it("sets default write", async () => {
-      expect(accessController.write).toEqual([testIdentity1.id]);
+      deepStrictEqual(accessController.write, [testIdentity1.id]);
     });
 
     it("user with write access can append", async () => {
-      const mockEntry = { identity: testIdentity1.hash, v: 1 };
+      const mockEntry: EntryType = { identity: testIdentity1.hash, v: 1 };
       const canAppend = await accessController.canAppend(mockEntry);
-      expect(canAppend).toBe(true);
+      strictEqual(canAppend, true);
     });
 
     it("user without write cannot append", async () => {
-      const mockEntry = { identity: testIdentity2.hash, v: 1 };
+      const mockEntry: EntryType = { identity: testIdentity2.hash, v: 1 };
       const canAppend = await accessController.canAppend(mockEntry);
-      expect(canAppend).toBe(false);
+      strictEqual(canAppend, false);
     });
 
     it("replicates the access controller", async () => {
-      const replicated = await IPFSAccessController({
+      const replicated = await IPFSAccessController()({
         orbitdb: orbitdb2,
         identities: identities2,
         address: accessController.address,
       });
-      expect(replicated.type).toBe(accessController.type);
-      expect(replicated.address).toBe(accessController.address);
-      expect(replicated.write).toEqual(accessController.write);
+
+      strictEqual(replicated.type, accessController.type);
+      strictEqual(replicated.address, accessController.address);
+      deepStrictEqual(replicated.write, accessController.write);
     });
   });
 
   describe("Write all access", () => {
     beforeAll(async () => {
-      accessController = await IPFSAccessController({
+      accessController = await IPFSAccessController({ write: ["*"] })({
         orbitdb: orbitdb1,
         identities: identities1,
-        write: ["*"],
       });
     });
 
     it("sets write to 'Anyone'", async () => {
-      expect(accessController.write).toEqual(["*"]);
+      deepStrictEqual(accessController.write, ["*"]);
     });
   });
 });

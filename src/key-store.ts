@@ -65,6 +65,8 @@ export const signMessage = async (
   key: PrivateKey,
   data: string | Uint8Array
 ): Promise<string> => {
+  if (!key) throw new Error("No signing key given");
+  if (data === undefined) throw new Error("Given input data was undefined");
   const buf = data instanceof Uint8Array ? data : uint8ArrayFromString(data);
   const sig = await key.sign(buf);
   return uint8ArrayToString(sig, "base16");
@@ -81,6 +83,9 @@ export const verifyMessage = async (
   publicKey: string,
   data: string | Uint8Array
 ): Promise<boolean> => {
+  if (!signature) throw new Error("Signature required");
+  if (!publicKey) throw new Error("Public key required");
+  if (data === undefined) throw new Error("Data required");
   const verifiedCache = await verifiedCachePromise;
   const cached = (await verifiedCache.get(signature)) as
     | VerifiedCacheItem

@@ -32,7 +32,7 @@ interface LogPayload<T = any> {
 }
 
 // Fully compatible with DatabaseType
-const Documents: DatabaseType<DocumentsInstance, DocumentsOptions> =
+const Documents: DatabaseType =
   (options: DocumentsOptions = { indexBy: "_id" }) =>
   async (context: DatabaseContext): Promise<DocumentsInstance> => {
     const database = await Database(context);

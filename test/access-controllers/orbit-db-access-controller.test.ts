@@ -1,4 +1,4 @@
-import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
+import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { strictEqual, deepStrictEqual, notStrictEqual } from "assert";
 import { rimraf } from "rimraf";
 import type { Helia } from "helia";
@@ -11,7 +11,7 @@ import Keystore from "../../src/key-store";
 import Identities from "../../src/identities/identities";
 import OrbitDBAccessController from "../../src/access-controllers/orbitdb";
 import connectPeers from "../utils/connect-nodes";
-import createHelia from "../utils/create-helia";
+import { createHeliaNode } from "../utils/create-helia";
 
 describe("OrbitDBAccessController", () => {
   const dbPath1 = "./orbitdb/tests/orbitdb-access-controller/1";
@@ -30,7 +30,8 @@ describe("OrbitDBAccessController", () => {
   let accessController: any;
 
   beforeAll(async () => {
-    [ipfs1, ipfs2] = await Promise.all([createHelia(), createHelia()]);
+    // Create Helia nodes using new API
+    [ipfs1, ipfs2] = await Promise.all([createHeliaNode(), createHeliaNode()]);
     await connectPeers(ipfs1, ipfs2);
 
     keystore1 = await Keystore({ path: dbPath1 + "/keys" });
@@ -59,7 +60,7 @@ describe("OrbitDBAccessController", () => {
 
   describe("Default write access", () => {
     beforeAll(async () => {
-      accessController = await OrbitDBAccessController({
+      accessController = await OrbitDBAccessController()({
         orbitdb: orbitdb1,
         identities: identities1,
       });
@@ -90,7 +91,7 @@ describe("OrbitDBAccessController", () => {
 
   describe("grant", () => {
     beforeAll(async () => {
-      accessController = await OrbitDBAccessController({
+      accessController = await OrbitDBAccessController()({
         orbitdb: orbitdb1,
         identities: identities1,
         address: "testdb/add",
@@ -135,7 +136,7 @@ describe("OrbitDBAccessController", () => {
 
   describe("revoke", () => {
     beforeAll(async () => {
-      accessController = await OrbitDBAccessController({
+      accessController = await OrbitDBAccessController()({
         orbitdb: orbitdb1,
         identities: identities1,
         address: "testdb/remove",

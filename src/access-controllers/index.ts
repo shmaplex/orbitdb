@@ -1,68 +1,92 @@
 /**
  * @module AccessControllers
  * @description
- * Provides a system for managing access controllers. Supported access
- * controllers can be registered, retrieved, and instantiated. This module
- * supports both class-based and async factory-function controllers.
+ * Provides a system for managing access controllers in OrbitDB.
  */
 
+import type { IdentitiesInstance } from "../identities";
 import type { EntryType } from "../oplog";
 import IPFSAccessController from "./ipfs";
 import OrbitDBAccessController from "./orbitdb";
 
 /**
- * Interface for an access controller instance.
- * Every instance must implement `canAppend`, which decides
- * whether a given entry can be appended.
+ * Represents a single Access Controller instance.
+ * Responsible for deciding if an entry can be appended and managing its lifecycle.
  */
 export interface AccessControllerInstance {
-  /**
-   * Determines whether a given log entry is allowed to be appended.
-   */
   canAppend: (entry: EntryType) => Promise<boolean>;
-
-  /** Optional address of the access controller */
   address?: string;
-
-  /** The controller type identifier (e.g., 'ipfs', 'orbitdb') */
-  type: string;
-
-  /** Array of authorized writer identities */
+  type?: string;
   write?: string[];
-
-  /** Optional cleanup method */
   close?: () => Promise<void>;
-
-  /** Optional method to drop the access controller state */
   drop?: () => Promise<void>;
+  capabilities?: () => Promise<Record<string, Set<string>>>;
 }
 
 /**
- * Type representing an Access Controller class/module.
- * Must include a static `type` property.
- * Can be a class, a function returning AccessControllerInstance,
- * or an async factory returning Promise<AccessControllerInstance>.
+ * Context provided to the inner function of a curried Access Controller factory.
+ */
+export interface AccessControllerContext {
+  orbitdb: any;
+  identities: IdentitiesInstance;
+  address?: string;
+  name?: string;
+}
+
+/**
+ * Optional parameters passed to the outer function of a curried Access Controller.
+ */
+export interface AccessControllerParams {
+  write?: string[];
+  storage?: any;
+  name?: string;
+}
+
+/**
+ * A curried factory function for building Access Controllers.
+ * Supports both JS-style curried usage and TS async usage.
+ */
+export type AccessControllerFactory = {
+  /**
+   * Outer factory: optionally accepts parameters, always returns a curried function
+   * which takes a context and returns a Promise of the instance.
+   */
+  (params?: AccessControllerParams): (
+    ctx: AccessControllerContext
+  ) => Promise<AccessControllerInstance>;
+
+  /** Static type property for registry and identification */
+  type?: string;
+};
+
+/**
+ * Utility type to extract the final AccessControllerInstance from a controller module.
+ */
+export type AccessControllerInstanceType<T> = T extends (
+  params?: infer P
+) => (ctx: infer C) => infer I
+  ? Awaited<I>
+  : T extends (ctx: infer C) => infer I
+  ? Awaited<I>
+  : never;
+
+/**
+ * A module definition for an Access Controller.
+ * Supports three patterns:
+ * 1. Curried factory: params => ctx => instance
+ * 2. Single-stage async: ctx + params => instance
+ * 3. Single-stage sync: ctx + params => instance
  */
 export type AccessControllerModule = {
   type: string;
-  (...args: any[]):
-    | AccessControllerInstance
-    | Promise<AccessControllerInstance>;
-};
+} & AccessControllerFactory;
 
-/** Registry of access controllers by type */
+/** Internal registry of available access controller modules. */
 const accessControllers: Record<string, AccessControllerModule> = {};
 
 /**
- * Type representing the registered access controller types.
- */
-export type AccessControllerType = keyof typeof accessControllers;
-
-/**
- * Gets an access controller module by type.
- * @param type - The type of the access controller.
- * @returns The access controller module.
- * @throws Will throw if the type is not registered.
+ * Retrieves a registered Access Controller module by its `type` string.
+ * @throws If the controller type is not registered.
  */
 export const getAccessController = (type: string): AccessControllerModule => {
   const controller = accessControllers[type];
@@ -73,40 +97,34 @@ export const getAccessController = (type: string): AccessControllerModule => {
 };
 
 /**
- * Registers a new access controller module.
- * @param accessController - A compatible access controller module.
- * @throws Will throw if the module lacks a `type` property or
- * if the type is already registered.
+ * Registers a new Access Controller module.
+ * @throws If the type already exists or lacks a `.type` property.
  */
 export const useAccessController = (
   accessController: AccessControllerModule
 ): void => {
   if (!accessController.type) {
-    throw new Error(`AccessController must have 'type' property`);
+    throw new Error(`AccessController must have a static 'type' property`);
   }
-
   if (accessControllers[accessController.type]) {
     throw new Error(
       `AccessController type '${accessController.type}' is already registered`
     );
   }
-
   accessControllers[accessController.type] = accessController;
 };
 
-// --- Register built-in access controllers ---
+// Register built-ins
 useAccessController(IPFSAccessController);
 useAccessController(OrbitDBAccessController);
 
-/**
- * TypeScript-friendly instance types for database usage.
- */
-export type OrbitDBAccessControllerInstance = Awaited<
-  ReturnType<typeof OrbitDBAccessController>
+/** Type helpers for built-in controllers. */
+export type OrbitDBAccessControllerInstance = AccessControllerInstanceType<
+  typeof OrbitDBAccessController
 >;
-export type IPFSAccessControllerInstance = Awaited<
-  ReturnType<typeof IPFSAccessController>
+export type IPFSAccessControllerInstance = AccessControllerInstanceType<
+  typeof IPFSAccessController
 >;
 
-/** Export built-in access controllers */
+/** Exports */
 export { IPFSAccessController, OrbitDBAccessController };

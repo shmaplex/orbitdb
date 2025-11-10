@@ -6,7 +6,10 @@ import {
 } from "./access-controllers";
 import IPFSAccessController from "./access-controllers/ipfs";
 import OrbitDBAccessController from "./access-controllers/orbitdb";
-import OrbitDBAddress, { isValidAddress } from "./address";
+import OrbitDBAddress, {
+  isValidAddress,
+  type OrbitDBAddressType,
+} from "./address";
 import type { DatabaseInstance, DatabaseType } from "./databases";
 import { getDatabaseType } from "./databases";
 import {
@@ -21,15 +24,12 @@ import ManifestStore, {
   type ManifestParams,
   type ManifestStoreInstance,
 } from "./manifest-store";
+import type { StorageBackend } from "./storage";
 import { createId, join as pathJoin } from "./utils";
 
 const DEFAULT_DB_TYPE = "events";
+const DEFAULT_ACCESS_CONTROLLER = IPFSAccessController;
 
-// Wrap default access controller as factory
-const DEFAULT_ACCESS_CONTROLLER = async (ctx: Record<string, any>) =>
-  IPFSAccessController(ctx);
-
-// Register built-in controllers
 useAccessController(IPFSAccessController);
 useAccessController(OrbitDBAccessController);
 
@@ -38,10 +38,10 @@ export interface OpenDatabaseOptions {
   meta?: Record<string, unknown>;
   sync?: boolean;
   Database?: DatabaseType;
-  AccessController?: AccessControllerModuleFactory;
-  headsStorage?: any;
-  entryStorage?: any;
-  indexStorage?: any;
+  AccessController?: () => (ctx: any) => Promise<ACInstance>;
+  headsStorage?: StorageBackend;
+  entryStorage?: StorageBackend;
+  indexStorage?: StorageBackend;
   referencesCount?: number;
   encryption?: boolean;
 }
@@ -60,10 +60,6 @@ export interface OrbitDBInstance {
   identity: IdentityType;
   peerId: unknown;
 }
-
-export type AccessControllerModuleFactory = (
-  context: Record<string, any>
-) => Promise<ACInstance>;
 
 const OrbitDB = async ({
   ipfs,
@@ -91,15 +87,11 @@ const OrbitDB = async ({
   const ids: IdentitiesInstance =
     identities || (await Identities({ ipfs, keystore: ks }));
 
-  // Build IdentityOptions safely
   const identityOpts: IdentityOptions = {};
   if (identity) {
-    if (identity.provider) {
+    if (identity.provider)
       identityOpts.provider = identity.provider as IdentityProvider;
-    }
-    if (identity.id) {
-      identityOpts.id = identity.id;
-    }
+    if (identity.id) identityOpts.id = identity.id;
   }
 
   const userIdentity: IdentityType = await ids.createIdentity(
@@ -109,19 +101,17 @@ const OrbitDB = async ({
   const manifestStore: ManifestStoreInstance = await ManifestStore({ ipfs });
   const databases: Record<string, DatabaseInstance> = {};
 
-  const handleDatabaseClose = (address: string) => () => {
-    delete databases[address];
-  };
+  const onDatabaseClosed = (address: string) => () => delete databases[address];
 
   const open = async (
-    address: string,
+    inputAddress: string,
     options: OpenDatabaseOptions = {}
   ): Promise<DatabaseInstance> => {
-    if (databases[address]) return databases[address];
+    if (databases[inputAddress]) return databases[inputAddress];
 
     const {
       type: optType,
-      meta,
+      meta: optMeta,
       sync = true,
       Database: optDatabase,
       AccessController: optAC,
@@ -132,59 +122,63 @@ const OrbitDB = async ({
       encryption,
     } = options;
 
-    const dbAddress = address;
-    const dbTypeLocal = optType || DEFAULT_DB_TYPE;
-
+    let address: OrbitDBAddressType = OrbitDBAddress(inputAddress);
+    let type = optType || DEFAULT_DB_TYPE;
+    let meta = optMeta;
     let manifest: Record<string, any>;
     let accessController: ACInstance;
     let name: string;
 
-    if (isValidAddress(dbAddress)) {
-      const addr = OrbitDBAddress(dbAddress);
+    if (isValidAddress(inputAddress)) {
+      const addr = OrbitDBAddress(inputAddress);
       manifest = (await manifestStore.get(addr.hash)) || {};
+
       const acType = manifest.accessController?.split("/").pop();
+      if (!acType)
+        throw new Error("Invalid access controller type in manifest");
 
-      const acModule = acType
-        ? getAccessController(acType)
-        : DEFAULT_ACCESS_CONTROLLER;
-      const acFactory: AccessControllerModuleFactory =
-        typeof acModule === "function"
-          ? (acModule as AccessControllerModuleFactory)
-          : async () => acModule as ACInstance;
-
-      accessController = await acFactory({
+      const ACModule = getAccessController(acType);
+      const ACFactory = ACModule(); // outer factory
+      accessController = await ACFactory({
         orbitdb: { open, identity: userIdentity, ipfs },
         identities: ids,
         address: manifest.accessController,
       });
 
       name = manifest.name;
+      type = type || manifest.type;
+      meta = manifest.meta;
     } else {
-      const acFactory: AccessControllerModuleFactory =
-        optAC || DEFAULT_ACCESS_CONTROLLER;
-
-      accessController = await acFactory({
+      const ACModule = optAC || DEFAULT_ACCESS_CONTROLLER;
+      const ACFactory = ACModule(); // outer factory
+      accessController = await ACFactory({
         orbitdb: { open, identity: userIdentity, ipfs },
         identities: ids,
-        name: dbAddress,
+        name: inputAddress,
       });
 
       const m = await manifestStore.create({
-        name: dbAddress,
-        type: dbTypeLocal,
+        name: inputAddress,
+        type,
         accessController: accessController.address,
         meta,
       } as ManifestParams);
 
       manifest = m.manifest;
+      address = OrbitDBAddress(m.hash);
       name = manifest.name;
+      meta = manifest.meta;
+
+      if (databases[inputAddress]) return databases[inputAddress];
     }
 
-    const dbFactory = optDatabase || getDatabaseType(dbTypeLocal);
-    const db = await dbFactory()({
+    const dbFactory = optDatabase || getDatabaseType(type)();
+    if (!dbFactory) throw new Error(`Unsupported database type: '${type}'`);
+
+    const db = (await dbFactory({
       ipfs,
       identity: userIdentity,
-      address: dbAddress,
+      address: address.toString(),
       name,
       access: accessController,
       directory: dir,
@@ -195,10 +189,10 @@ const OrbitDB = async ({
       indexStorage,
       referencesCount,
       encryption,
-    });
+    })) as DatabaseInstance;
 
-    db.events.on("close", handleDatabaseClose(dbAddress));
-    databases[dbAddress] = db;
+    db.events.on("close", onDatabaseClosed(inputAddress));
+    databases[inputAddress] = db;
 
     return db;
   };

@@ -15,7 +15,13 @@ const maxClockTimeReducer = (res: number, acc: EntryType) =>
 /** @module Log */
 
 export interface Encryption {
+  /** Encryption/decryption for data payloads */
   data?: {
+    encrypt?: (data: Uint8Array) => Promise<Uint8Array>;
+    decrypt?: (data: Uint8Array) => Promise<Uint8Array>;
+  };
+  /** Optional encryption/decryption for replication payloads */
+  replication?: {
     encrypt?: (data: Uint8Array) => Promise<Uint8Array>;
     decrypt?: (data: Uint8Array) => Promise<Uint8Array>;
   };
@@ -67,6 +73,7 @@ export interface LogInstance {
 
 /** Default access controller allowing all appends */
 const DefaultAccessController: () => Promise<AccessController> = async () => ({
+  type: "default",
   canAppend: async (_entry: EntryType) => true,
 });
 
@@ -181,12 +188,13 @@ const Log = async (
       }
 
       const entryHash = await oplogStore.setHead(entry);
+      if (!entryHash) throw new Error("Failed to set head: entry hash missing");
       entry.hash = entryHash;
 
       return entry;
     };
 
-    return appendQueue.add<EntryType>(task);
+    return appendQueue.add(task, { throwOnTimeout: true });
   };
 
   /** Joins a single entry into the log */

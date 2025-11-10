@@ -1,3 +1,4 @@
+import { Helia } from "helia";
 import type { IPFS } from "ipfs-core-types";
 import drain from "it-drain";
 import { base58btc } from "multiformats/bases/base58";
@@ -26,7 +27,7 @@ const IPFSBlockStorage = async ({
   pin = false,
   timeout = DefaultTimeout,
 }: {
-  ipfs: IPFS;
+  ipfs: IPFS | Helia;
   pin?: boolean;
   timeout?: number;
 }): Promise<IPFSBlockStorageInstance> => {

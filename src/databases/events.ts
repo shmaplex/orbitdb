@@ -77,7 +77,7 @@ function normalizeEncryption(
 /**
  * Factory to create an Events database instance (curried style).
  */
-const Events: DatabaseType<EventsInstance> =
+const Events: DatabaseType =
   () =>
   async (context: EventsContext): Promise<EventsInstance> => {
     if (!context.address) throw new Error("Database address is required");

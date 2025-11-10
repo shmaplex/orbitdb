@@ -4,6 +4,7 @@
  */
 
 import * as dagCbor from "@ipld/dag-cbor";
+import type { Helia } from "helia";
 import type { IPFS } from "ipfs-core-types";
 import { base58btc } from "multiformats/bases/base58";
 import * as Block from "multiformats/block";
@@ -43,7 +44,7 @@ const ManifestStore = async ({
   ipfs,
   storage,
 }: {
-  ipfs?: IPFS;
+  ipfs?: IPFS | Helia;
   storage?: StorageBackend;
 } = {}): Promise<ManifestStoreInstance> => {
   const backendStorage =

@@ -18,7 +18,7 @@ export interface KeyValueInstance extends DatabaseInstance {
   all: () => Promise<Array<{ key: string; value: any; hash: string }>>;
 }
 
-const KeyValue: DatabaseType<KeyValueInstance> =
+const KeyValue: DatabaseType =
   () =>
   async (context: DatabaseContext): Promise<KeyValueInstance> => {
     const database = await Database(context);

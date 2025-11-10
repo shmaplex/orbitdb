@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import type { Helia } from "helia";
 import type { IPFS } from "ipfs-core-types";
 import { pipe } from "it-pipe";
 import PQueue from "p-queue";
@@ -8,7 +9,7 @@ import { Entry } from "./oplog";
 import type { Entry as EntryType } from "./oplog/entry";
 import pathJoin from "./utils/path-join";
 
-const DefaultTimeout = 30000; // 30 seconds
+const DefaultTimeout = 30_000;
 
 export type OnSynced = (entry: EntryType) => Promise<void> | void;
 
@@ -21,7 +22,7 @@ export interface SyncInstance {
 }
 
 interface SyncParams {
-  ipfs: IPFS;
+  ipfs: IPFS | Helia;
   log: LogType;
   events?: EventEmitter;
   onSynced?: OnSynced;
@@ -29,6 +30,27 @@ interface SyncParams {
   timeout?: number;
 }
 
+/**
+ * A minimal extension of IPFS that exposes libp2p internals.
+ */
+interface IPFSWithLibp2p extends IPFS {
+  libp2p: {
+    dialProtocol?: (
+      peer: any,
+      protocol: string,
+      options?: { signal?: AbortSignal }
+    ) => Promise<any>;
+    handle?: (protocol: string, handler: Function) => Promise<void>;
+    unhandle?: (protocol: string) => Promise<void>;
+    addEventListener?: (event: string, handler: Function) => void;
+    removeEventListener?: (event: string, handler: Function) => void;
+  };
+}
+
+/**
+ * Core Sync protocol for OrbitDB-like replication.
+ * Keeps as close as possible to the original JS version while enforcing type safety.
+ */
 const Sync = async ({
   ipfs,
   log,
@@ -40,47 +62,58 @@ const Sync = async ({
   if (!ipfs) throw new Error("An instance of IPFS is required.");
   if (!log) throw new Error("An instance of log is required.");
 
-  const libp2p = ipfs.libp2p;
-  const pubsub = ipfs.libp2p.services.pubsub;
+  const { libp2p } = ipfs as IPFSWithLibp2p;
+  const pubsub: any = (ipfs as any).pubsub;
 
   const address = log.id;
   const headsSyncAddress = pathJoin("/orbitdb/heads/", address);
 
   const queue = new PQueue({ concurrency: 1 });
   const peers = new Set<string>();
-  events = events || new EventEmitter();
-  timeout ??= DefaultTimeout;
+  const emitter = events ?? new EventEmitter();
+  const syncTimeout = timeout ?? DefaultTimeout;
   let started = false;
 
+  /** Notify when a peer joins */
   const onPeerJoined = async (peerId: string) => {
     const heads = await log.heads();
-    events.emit("join", peerId, heads);
+    emitter.emit("join", peerId, heads);
   };
 
-  const sendHeads = (source?: AsyncIterable<Uint8Array>) =>
-    (async function* (): AsyncGenerator<Uint8Array> {
-      const heads = await log.heads();
-      for await (const head of heads) {
-        const bytes = await log.storage.get(head.hash);
-        if (bytes) yield bytes as Uint8Array;
-      }
-    })();
+  /** Generator that yields serialized heads for outbound sync */
+  async function* sendHeads(): AsyncGenerator<Uint8Array> {
+    const heads = await log.heads();
+    for (const head of heads) {
+      if (!head.hash) continue;
+      const bytes = await log.storage.get(head.hash);
+      const data =
+        bytes instanceof Uint8Array
+          ? bytes
+          : (bytes as any)?.bytes instanceof Uint8Array
+          ? (bytes as any).bytes
+          : undefined;
+      if (data) yield data;
+    }
+  }
 
+  /** Stream processor for inbound heads */
   const receiveHeads =
     (peerId: string) => async (source: AsyncIterable<Uint8Array>) => {
       for await (const value of source) {
-        if (onSynced) {
-          const entry = await Entry.decode(
-            value,
-            log.encryption.replication?.decrypt,
-            log.encryption.data?.decrypt
-          );
-          await onSynced(entry);
-        }
+        if (!onSynced) continue;
+        const bytes =
+          value instanceof Uint8Array ? value : new Uint8Array(value);
+        const entry = await Entry.decode(
+          bytes,
+          log.encryption.replication?.decrypt,
+          log.encryption.data?.decrypt
+        );
+        await onSynced(entry);
       }
       if (started) await onPeerJoined(peerId);
     };
 
+  /** Handle inbound protocol connection */
   const handleReceiveHeads = async ({
     connection,
     stream,
@@ -91,98 +124,106 @@ const Sync = async ({
     const peerId = String(connection.remotePeer);
     try {
       peers.add(peerId);
-      await pipe(stream, receiveHeads(peerId), sendHeads, stream);
+      await pipe(stream.source, receiveHeads(peerId), stream.sink);
     } catch (e) {
       peers.delete(peerId);
-      events.emit("error", e);
+      emitter.emit("error", e);
     }
   };
 
-  const handlePeerSubscribed = async (event: CustomEvent) => {
+  /** React to peer subscription changes */
+  const handlePeerSubscribed = async (event: any) => {
     const task = async () => {
       const { peerId: remotePeer, subscriptions } = event.detail;
       const peerId = String(remotePeer);
-      const subscription = subscriptions.find((e: any) => e.topic === address);
+      const subscription = subscriptions.find((s: any) => s.topic === address);
       if (!subscription) return;
 
       if (subscription.subscribe) {
         if (peers.has(peerId)) return;
-        const timeoutController = new TimeoutController(timeout);
+        const timeoutController = new TimeoutController(syncTimeout);
         const { signal } = timeoutController;
         try {
           peers.add(peerId);
-          const stream = await libp2p.dialProtocol(
+          const stream = await libp2p.dialProtocol?.(
             remotePeer,
             headsSyncAddress,
             { signal }
           );
-          await pipe(sendHeads, stream, receiveHeads(peerId));
+          await pipe(sendHeads(), stream, receiveHeads(peerId));
         } catch (e: any) {
           peers.delete(peerId);
-          if (e.name !== "UnsupportedProtocolError") events.emit("error", e);
+          if (e.name !== "UnsupportedProtocolError") emitter.emit("error", e);
         } finally {
           timeoutController.clear();
         }
       } else {
         peers.delete(peerId);
-        events.emit("leave", peerId);
+        emitter.emit("leave", peerId);
       }
     };
     queue.add(task);
   };
 
-  const handleUpdateMessage = async (message: CustomEvent) => {
-    const { topic, data } = message.detail;
+  /** Handle incoming pubsub updates */
+  const handleUpdateMessage = async (message: any) => {
+    const { topic, data } = message.detail ?? message;
     const task = async () => {
+      if (!data || !onSynced) return;
       try {
-        if (data && onSynced) {
-          const entry = await Entry.decode(
-            data,
-            log.encryption.replication?.decrypt,
-            log.encryption.data?.decrypt
-          );
-          await onSynced(entry);
-        }
+        const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+        const entry = await Entry.decode(
+          bytes,
+          log.encryption.replication?.decrypt,
+          log.encryption.data?.decrypt
+        );
+        await onSynced(entry);
       } catch (e) {
-        events.emit("error", e);
+        emitter.emit("error", e);
       }
     };
     if (topic === address) queue.add(task);
   };
 
-  const handlePeerDisconnected = async (event: CustomEvent) => {
-    peers.delete(event.detail.toString());
+  const handlePeerDisconnected = (event: any) => {
+    peers.delete(String(event.detail ?? event));
   };
 
+  /** Publish new entries to peers */
   const add = async (entry: EntryType) => {
-    if (started && entry.hash) {
-      const bytes = await log.storage.get(entry.hash);
-      if (bytes) await pubsub.publish(address, bytes);
-    }
+    if (!started || !entry.hash) return;
+    const bytes = await log.storage.get(entry.hash);
+    const data =
+      bytes instanceof Uint8Array
+        ? bytes
+        : (bytes as any)?.bytes instanceof Uint8Array
+        ? (bytes as any).bytes
+        : undefined;
+    if (data) await pubsub.publish(address, data);
   };
 
+  /** Stop sync operations and cleanup */
   const stopSync = async () => {
-    if (started) {
-      started = false;
-      await queue.clear();
-      pubsub.removeEventListener("subscription-change", handlePeerSubscribed);
-      pubsub.removeEventListener("message", handleUpdateMessage);
-      await libp2p.unhandle(headsSyncAddress);
-      await pubsub.unsubscribe(address);
-      libp2p.removeEventListener("peer:disconnect", handlePeerDisconnected);
-      peers.clear();
-    }
+    if (!started) return;
+    started = false;
+    await queue.clear();
+    pubsub.removeEventListener?.("subscription-change", handlePeerSubscribed);
+    pubsub.removeEventListener?.("message", handleUpdateMessage);
+    await libp2p.unhandle?.(headsSyncAddress);
+    await pubsub.unsubscribe(address);
+    libp2p.removeEventListener?.("peer:disconnect", handlePeerDisconnected);
+    peers.clear();
   };
 
+  /** Start syncing */
   const startSync = async () => {
-    if (!started) {
-      pubsub.addEventListener("subscription-change", handlePeerSubscribed);
-      pubsub.addEventListener("message", handleUpdateMessage);
-      await pubsub.subscribe(address);
-      await libp2p.handle(headsSyncAddress, handleReceiveHeads);
-      libp2p.addEventListener("peer:disconnect", handlePeerDisconnected);
-      started = true;
-    }
+    if (started) return;
+    pubsub.addEventListener?.("subscription-change", handlePeerSubscribed);
+    pubsub.addEventListener?.("message", handleUpdateMessage);
+    await pubsub.subscribe(address);
+    await libp2p.handle?.(headsSyncAddress, handleReceiveHeads);
+    libp2p.addEventListener?.("peer:disconnect", handlePeerDisconnected);
+    started = true;
   };
 
   if (start !== false) await startSync();
@@ -191,7 +232,7 @@ const Sync = async ({
     add,
     stop: stopSync,
     start: startSync,
-    events,
+    events: emitter,
     peers,
   };
 };
