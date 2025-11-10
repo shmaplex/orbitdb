@@ -8,7 +8,7 @@ const hasher = sha256;
 const hashStringEncoding = base58btc;
 
 /**
- * Represents an Identity object.
+ * Represents a full Identity object.
  */
 export interface IdentityType {
   id: string;
@@ -22,7 +22,7 @@ export interface IdentityType {
 }
 
 /**
- * Minimal serializable Identity for encoding/decoding.
+ * Minimal serializable Identity used for IPLD encoding/decoding.
  */
 interface IdentitySerializable {
   id: string;
@@ -31,8 +31,19 @@ interface IdentitySerializable {
   type: string;
 }
 
+type IdentityInput = Partial<{
+  id: string;
+  publicKey: string | { raw: string; [key: string]: unknown };
+  signatures: { id?: unknown; publicKey?: unknown; [key: string]: unknown };
+  type: string;
+  sign: (data: Uint8Array) => Promise<Uint8Array>;
+  verify: (data: Uint8Array, signature: Uint8Array) => Promise<boolean>;
+}>;
+
 /**
  * Creates a new Identity instance.
+ * Automatically normalizes `publicKey` if it's a string.
+ * Throws runtime errors if required fields are missing.
  */
 const Identity = async ({
   id,
@@ -41,35 +52,53 @@ const Identity = async ({
   type,
   sign,
   verify,
-}: {
-  id: string;
-  publicKey: { raw: string; [key: string]: unknown };
-  signatures: { id: unknown; publicKey: unknown; [key: string]: unknown };
-  type: string;
-  sign: (data: Uint8Array) => Promise<Uint8Array>;
-  verify: (data: Uint8Array, signature: Uint8Array) => Promise<boolean>;
-}): Promise<IdentityType> => {
+}: IdentityInput = {}): Promise<IdentityType> => {
   if (!id) throw new Error("Identity id is required");
-  if (!publicKey || !publicKey.raw) throw new Error("Invalid public key");
-  if (!signatures || !signatures.id || !signatures.publicKey)
-    throw new Error("Signatures object is invalid");
+  if (!publicKey) throw new Error("Invalid public key");
+
+  // Normalize publicKey to object with `raw` property
+  const normalizedPublicKey =
+    typeof publicKey === "string" ? { raw: publicKey } : publicKey;
+  if (!normalizedPublicKey.raw) throw new Error("Invalid public key");
+
+  if (!signatures) throw new Error("Signatures object is required");
+  if (!signatures.id) throw new Error("Signature of id is required");
+  if (!signatures.publicKey)
+    throw new Error("Signature of publicKey+id is required");
   if (!type) throw new Error("Identity type is required");
+
+  const signFn =
+    sign ||
+    (async (_data: Uint8Array) => {
+      throw new Error("sign function not provided");
+    });
+
+  const verifyFn =
+    verify ||
+    (async (_data: Uint8Array, _sig: Uint8Array) => {
+      throw new Error("verify function not provided");
+    });
 
   const identity: IdentityType = {
     id,
-    publicKey,
-    signatures,
+    publicKey: normalizedPublicKey,
+    signatures: signatures as {
+      id: unknown;
+      publicKey: unknown;
+      [key: string]: unknown;
+    },
     type,
-    sign,
-    verify,
+    sign: signFn,
+    verify: verifyFn,
   };
 
   const { hash, bytes } = await _encodeIdentity({
     id,
-    publicKey,
-    signatures,
+    publicKey: normalizedPublicKey,
+    signatures: identity.signatures,
     type,
   });
+
   identity.hash = hash;
   identity.bytes = bytes;
 
@@ -77,19 +106,17 @@ const Identity = async ({
 };
 
 /**
- * Encodes a minimal identity object to an IPLD block.
+ * Encodes a minimal IdentitySerializable object to an IPLD block.
  */
 const _encodeIdentity = async (
   identity: IdentitySerializable
 ): Promise<{ hash: string; bytes: Uint8Array }> => {
   const { id, publicKey, signatures, type } = identity;
-
   const { cid, bytes } = await Block.encode({
     value: { id, publicKey, signatures, type },
     codec,
     hasher,
   });
-
   return {
     hash: cid.toString(hashStringEncoding),
     bytes: Uint8Array.from(bytes),
@@ -98,12 +125,11 @@ const _encodeIdentity = async (
 
 /**
  * Decodes identity bytes and returns a new Identity instance.
- * Requires `sign` and `verify` functions to be provided.
  */
 const decodeIdentity = async (
   bytes: Uint8Array,
-  sign: (data: Uint8Array) => Promise<Uint8Array>,
-  verify: (data: Uint8Array, signature: Uint8Array) => Promise<boolean>
+  sign?: (data: Uint8Array) => Promise<Uint8Array>,
+  verify?: (data: Uint8Array, signature: Uint8Array) => Promise<boolean>
 ): Promise<IdentityType> => {
   const { value } = await Block.decode({ bytes, codec, hasher });
 
@@ -113,11 +139,18 @@ const decodeIdentity = async (
 
   const { id, publicKey, signatures, type } = value as IdentitySerializable;
 
-  return Identity({ id, publicKey, signatures, type, sign, verify });
+  return Identity({
+    id,
+    publicKey,
+    signatures,
+    type,
+    sign,
+    verify,
+  });
 };
 
 /**
- * Checks if an object is a valid Identity instance.
+ * Type guard to check if an object is a valid IdentityType.
  */
 const isIdentity = (identity: any): identity is IdentityType => {
   return (

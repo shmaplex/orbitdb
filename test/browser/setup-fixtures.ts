@@ -1,7 +1,7 @@
 import { beforeAll } from "vitest";
 import { privateKeyFromRaw } from "@libp2p/crypto/keys";
 import { fromString as uint8ArrayFromString } from "uint8arrays/from-string";
-import { Identities, KeyStore } from "../../src/index.js"; // adjust path as needed
+import KeyStore from "../../src/key-store"; // adjust path as needed
 
 const keysPath = "./testkeys";
 

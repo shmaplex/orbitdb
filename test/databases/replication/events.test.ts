@@ -2,12 +2,13 @@ import { describe, it, beforeAll, afterAll, afterEach, expect } from "vitest";
 import { deepStrictEqual } from "assert";
 import { rimraf } from "rimraf";
 import { copy } from "fs-extra";
-import { KeyStore, Identities } from "../../../src/index.js";
-import Events from "../../../src/databases/events.js";
-import testKeysPath from "../../fixtures/test-keys-path.js";
-import connectPeers from "../../utils/connect-nodes.js";
-import waitFor from "../../utils/wait-for.js";
-import createHelia from "../../utils/create-helia.js";
+import { KeyStore, Identities } from "../../../src";
+import Events from "../../../src/databases/events";
+import testKeysPath from "../../fixtures/test-keys-path";
+import connectPeers from "../../utils/connect-nodes";
+import waitFor from "../../utils/wait-for";
+import createHelia from "../../utils/create-helia";
+import { EntryType } from "../../../src/oplog";
 
 const keysPath = "./testkeys";
 
@@ -132,13 +133,13 @@ describe("Events Database Replication", () => {
       all2.unshift(event);
     }
     deepStrictEqual(
-      all2.map((e) => e.value),
+      all2.map((e: EntryType) => e.v),
       expected
     );
 
     const all1 = await db2.all();
     deepStrictEqual(
-      all1.map((e) => e.value),
+      all1.map((e: EntryType) => e.v),
       expected
     );
   });
@@ -220,7 +221,7 @@ describe("Events Database Replication", () => {
 
     const all1 = await db2.all();
     deepStrictEqual(
-      all1.map((e) => e.value),
+      all1.map((e: EntryType) => e.v),
       expected
     );
   });

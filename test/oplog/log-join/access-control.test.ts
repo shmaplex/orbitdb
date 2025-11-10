@@ -18,7 +18,7 @@ describe("Log - Access Control", () => {
   });
 
   beforeEach(async () => {
-    log1 = await Log(testIdentities[0], { logId: "X", access: ["userX"] });
+    log1 = await Log(testIdentities[0], { logId: "X" });
     log2 = await Log(testIdentities[1], { logId: "X" });
   });
 

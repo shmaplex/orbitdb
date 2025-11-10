@@ -9,8 +9,15 @@ import OplogStore, { type OplogStoreInstance } from "./oplog-store";
 const { LastWriteWins, NoZeroes } = ConflictResolution;
 
 const randomId = () => Date.now().toString();
-const maxClockTimeReducer = (res: number, acc: EntryType) =>
-  Math.max(res, acc.clock.time);
+/**
+ * Safely reduces over entries to find the maximum clock time.
+ * Guards against undefined clocks or times.
+ * @param {number} res - Current maximum clock time
+ * @param {EntryType} acc - Current entry
+ * @returns {number} The updated maximum clock time
+ */
+const maxClockTimeReducer = (res: number, acc: EntryType): number =>
+  Math.max(res, acc.clock?.time ?? 0);
 
 /** @module Log */
 
@@ -71,7 +78,13 @@ export interface LogInstance {
   encryption: Encryption;
 }
 
-/** Default access controller allowing all appends */
+/**
+ * Default AccessController for the Log.
+ * Default policy is that anyone can write to the Log.
+ * Signature of an entry will always be verified regardless of AccessController policy.
+ * Any object that implements the function `canAppend()` that returns true|false can be
+ * used as an AccessController.
+ */
 const DefaultAccessController: () => Promise<AccessController> = async () => ({
   type: "default",
   canAppend: async (_entry: EntryType) => true,
@@ -197,50 +210,88 @@ const Log = async (
     return appendQueue.add(task, { throwOnTimeout: true });
   };
 
-  /** Joins a single entry into the log */
+  /**
+   * Joins a single entry into the log.
+   * Verifies its integrity, connectedness, and authorization before merging.
+   */
   const joinEntry = async (entry: EntryType): Promise<boolean> => {
-    if (!entry.hash) return false;
+    if (!entry?.hash) return false;
     if (await has(entry.hash)) return false;
 
-    const verifyEntry = async (e: EntryType) => {
-      if (e.id !== id)
+    /** Validates entry ownership and signature */
+    const verifyEntry = async (e: EntryType): Promise<void> => {
+      if (!e.id || e.id !== id) {
         throw new Error(
           `Entry's id (${e.id}) doesn't match the log's id (${id}).`
         );
-      if (!(await access.canAppend(e)))
+      }
+      if (!(await access.canAppend(e))) {
         throw new Error(
           `Could not append entry: key "${e.identity}" is not allowed.`
         );
-      if (!(await Entry.verify(identity, e)))
+      }
+      if (!(await Entry.verify(identity, e))) {
         throw new Error(`Invalid signature for ${e.hash}`);
+      }
     };
 
     await verifyEntry(entry);
 
-    const headsHashes = (await heads())
+    // Gather current heads
+    const headsEntries = await heads();
+    const headsHashes = headsEntries
       .map((e) => e.hash)
       .filter((h): h is string => !!h);
+
+    // Initialize hash tracking
     const hashesToAdd = new Set<string>([entry.hash]);
-    const hashesToGet = new Set([...entry.next, ...entry.refs]);
+    const hashesToGet = new Set<string>([
+      ...(entry.next ?? []),
+      ...(entry.refs ?? []),
+    ]);
     const connectedHeads = new Set<string>();
 
-    const traverseAndVerify = async () => {
-      const entries = await Promise.all(Array.from(hashesToGet).map(get));
-      for (const e of entries.filter((e): e is EntryType => !!e)) {
+    /**
+     * Recursive verification of connected entries
+     * Ensures all required dependencies are present and valid
+     */
+    const traverseAndVerify = async (): Promise<void> => {
+      const entries = await Promise.all(
+        Array.from(hashesToGet).map(async (hash) => {
+          try {
+            return await get(hash);
+          } catch {
+            return undefined;
+          }
+        })
+      );
+
+      for (const e of entries.filter((x): x is EntryType => !!x && !!x.hash)) {
         if (!e.hash) continue;
+
         hashesToGet.delete(e.hash);
         await verifyEntry(e);
         hashesToAdd.add(e.hash);
-        for (const hash of [...e.next, ...e.refs]) {
+
+        const nextRefs = [...(e.next ?? []), ...(e.refs ?? [])];
+
+        for (const hash of nextRefs) {
           const alreadyHas = await has(hash);
-          if (!alreadyHas && !hashesToAdd.has(hash)) hashesToGet.add(hash);
-          else if (headsHashes.includes(hash)) connectedHeads.add(hash);
+          if (!alreadyHas && !hashesToAdd.has(hash)) {
+            hashesToGet.add(hash);
+          } else if (headsHashes.includes(hash)) {
+            connectedHeads.add(hash);
+          }
         }
       }
+
+      // Continue traversal until all dependencies are resolved
       if (hashesToGet.size > 0) await traverseAndVerify();
     };
 
     await traverseAndVerify();
+
+    // Merge verified entries into the local log store
     await oplogStore.addVerified(Array.from(hashesToAdd));
     await oplogStore.removeHeads(Array.from(connectedHeads));
     await oplogStore.addHead(entry);
@@ -258,7 +309,10 @@ const Log = async (
     for (const entry of await log.heads()) await joinEntry(entry);
   };
 
-  /** Traverses log entries */
+  /**
+   * Traverses an entry graph starting from given roots.
+   * Performs a depth-first traversal until `shouldStopFn` returns true.
+   */
   const traverse = async function* (
     rootEntries?: EntryType[],
     shouldStopFn?: (entry: EntryType) => Promise<boolean>
@@ -269,7 +323,9 @@ const Log = async (
     const traversed: Record<string, boolean> = {};
     let toFetch: string[] = [];
     const fetched: Record<string, boolean> = {};
-    const notIndexed = (hash: string) => !(traversed[hash] || fetched[hash]);
+
+    const notIndexed = (hash: string): boolean =>
+      !(traversed[hash] || fetched[hash]);
 
     while (stack.length > 0) {
       stack = stack.sort(sortFn);
@@ -282,17 +338,21 @@ const Log = async (
       traversed[entry.hash] = true;
       fetched[entry.hash] = true;
 
-      toFetch = [...toFetch, ...entry.next].filter(notIndexed);
+      // Use optional chaining and fallback to empty array
+      const nextHashes = entry.next ?? [];
+      toFetch = [...toFetch, ...nextHashes].filter(notIndexed);
+
       const nextEntries = await Promise.all(
         toFetch.map((h) => (notIndexed(h) ? get(h) : undefined))
       );
+
       const validNexts = nextEntries.filter(
         (e): e is EntryType => !!e && !!e.hash
       );
 
       toFetch = validNexts
-        .reduce(
-          (res: string[], acc) => Array.from(new Set([...res, ...acc.next])),
+        .reduce<string[]>(
+          (res, acc) => Array.from(new Set([...res, ...(acc.next ?? [])])),
           []
         )
         .filter(notIndexed);
@@ -301,7 +361,9 @@ const Log = async (
     }
   };
 
-  /** Returns an iterator over entries */
+  /**
+   * Asynchronous iterator over entries with range and amount filtering.
+   */
   const iterator = async function* ({
     amount = -1,
     gt,
@@ -318,24 +380,33 @@ const Log = async (
     if (amount === 0) return;
 
     const startEntries: EntryType[] = [];
+
     if (typeof lt === "string") {
       const entry = await get(lt);
       if (!entry || !entry.hash) return;
       startEntries.push(entry);
 
-      const nextEntries = (await Promise.all(entry.next.map(get))).filter(
-        (e): e is EntryType => !!e && !!e.hash
-      );
+      const nextEntries = (
+        await Promise.all((entry.next ?? []).map(get))
+      ).filter((e): e is EntryType => !!e && !!e.hash);
       startEntries.push(...nextEntries);
-    } else if (Array.isArray(lt)) startEntries.push(...lt);
-    if (Array.isArray(lte)) startEntries.push(...lte);
-    if (!startEntries.length) startEntries.push(...(await heads()));
+    } else if (Array.isArray(lt)) {
+      startEntries.push(...lt);
+    }
+
+    if (Array.isArray(lte)) {
+      startEntries.push(...lte);
+    }
+
+    if (!startEntries.length) {
+      startEntries.push(...(await heads()));
+    }
 
     const end = gt || gte ? await get(gt || gte!) : null;
     const amountToIterate = end || amount === -1 ? -1 : amount;
     let count = 0;
 
-    const shouldStopTraversal = async (entry: EntryType) => {
+    const shouldStopTraversal = async (entry: EntryType): Promise<boolean> => {
       count++;
       if (count >= amountToIterate && amountToIterate !== -1) return true;
       if (end && Entry.isEqual(entry, end)) return true;

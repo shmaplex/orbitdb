@@ -140,7 +140,9 @@ const findHeads = (entries: EntryType[]): EntryType[] => {
 
   for (const entry of entrySet) {
     if (!entry.hash) continue;
-    for (const next of entry.next) {
+
+    // handle possibly undefined 'next'
+    for (const next of entry.next ?? []) {
       if (next) referenced[next] = entry.hash;
     }
   }

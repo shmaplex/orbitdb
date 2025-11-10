@@ -1,16 +1,29 @@
+import type { KeyStoreType } from "../../key-store.js";
+import type { IdentityType } from "../identity.js";
 import PublicKeyIdentityProvider from "./publickey.js";
+
+export interface IdentityProviderOptions {
+  keystore?: KeyStoreType;
+  id?: string;
+  [key: string]: unknown; // allows future extension
+}
 
 /**
  * Interface for an identity provider
  */
 export interface IdentityProvider {
   type: string;
-  verifyIdentity: (identity: any) => Promise<boolean>;
-  [key: string]: any;
+  getId?: (options?: IdentityProviderOptions) => Promise<string>;
+  signIdentity?: (
+    data: unknown,
+    options?: IdentityProviderOptions
+  ) => Promise<string>;
+  verifyIdentity: (identity: IdentityType) => Promise<boolean>;
+  // [key: string]: any;
 }
 
 /**
- * Registry of available identity providers.
+ * Internal registry of available identity providers.
  * @private
  */
 const identityProviders: Record<string, IdentityProvider> = {};
@@ -18,7 +31,7 @@ const identityProviders: Record<string, IdentityProvider> = {};
 /**
  * Checks if a given identity provider type is supported.
  * @param type The identity provider type
- * @returns True if the provider is supported, false otherwise
+ * @returns True if the provider is supported
  * @private
  */
 const isProviderSupported = (type: string): boolean => {
@@ -28,50 +41,44 @@ const isProviderSupported = (type: string): boolean => {
 /**
  * Retrieves a registered identity provider by type.
  * @param type The identity provider type
- * @returns The identity provider function
- * @throws Will throw if the provider type is not supported
- * @memberof module:Identities
+ * @returns The identity provider
+ * @throws If the provider type is not supported
  */
 const getIdentityProvider = (type: string): IdentityProvider => {
   if (!isProviderSupported(type)) {
     throw new Error(`IdentityProvider type '${type}' is not supported`);
   }
-
   return identityProviders[type];
 };
 
 /**
- * Registers an identity provider.
- * @param identityProvider The identity provider to register
- * @throws Will throw if provider lacks 'type' or 'verifyIdentity'
- * @throws Will throw if the provider is already registered
- * @memberof module:Identities
- * @static
+ * Registers a new identity provider.
+ * @param identityProvider The provider to register
+ * @throws If missing 'type' or 'verifyIdentity' function
+ * @throws If the provider type is already registered
  */
-const useIdentityProvider = (identityProvider: IdentityProvider) => {
+const useIdentityProvider = (identityProvider: IdentityProvider): void => {
   if (!identityProvider.type || typeof identityProvider.type !== "string") {
-    throw new Error("Given IdentityProvider doesn't have a field 'type'.");
+    throw new Error("IdentityProvider must have a string 'type' property.");
   }
 
   if (
     !identityProvider.verifyIdentity ||
     typeof identityProvider.verifyIdentity !== "function"
   ) {
-    throw new Error(
-      "Given IdentityProvider doesn't have a function 'verifyIdentity'."
-    );
+    throw new Error("IdentityProvider must have a 'verifyIdentity' function.");
   }
 
   if (identityProviders[identityProvider.type]) {
     throw new Error(
-      `IdentityProvider '${identityProvider.type}' already added.`
+      `IdentityProvider '${identityProvider.type}' is already registered.`
     );
   }
 
   identityProviders[identityProvider.type] = identityProvider;
 };
 
-// Register the default PublicKeyIdentityProvider
+// Register built-in provider
 useIdentityProvider(PublicKeyIdentityProvider);
 
 export {

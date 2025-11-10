@@ -14,7 +14,7 @@ import Clock, { type ClockType } from "./clock";
 import ConflictResolution, {
   type ConflictResolutionType,
 } from "./conflict-resolution";
-import Entry, { type Entry as EntryType } from "./entry";
+import Entry, { type EntryType } from "./entry";
 import Log, { DefaultAccessController, type LogInstance } from "./log";
 
 /**

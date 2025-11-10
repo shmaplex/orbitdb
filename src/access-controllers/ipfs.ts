@@ -93,8 +93,11 @@ const IPFSAccessController: AccessControllerModule = Object.assign(
       }
 
       const canAppend = async (entry: EntryType): Promise<boolean> => {
+        if (!entry.identity) return false;
+
         const writerIdentity = await identities.getIdentity(entry.identity);
         if (!writerIdentity) return false;
+
         const { id } = writerIdentity;
         if (allowedWriters.includes(id) || allowedWriters.includes("*")) {
           return identities.verifyIdentity(writerIdentity);

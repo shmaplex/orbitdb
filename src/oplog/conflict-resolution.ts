@@ -1,5 +1,5 @@
-import { compareClocks } from "./clock";
-import type { Entry } from "./entry";
+import type { EntryType } from ".";
+import { type ClockType, compareClocks } from "./clock";
 
 /**
  * Last-Write-Wins comparator.
@@ -12,15 +12,15 @@ import type { Entry } from "./entry";
  * @returns 1 if a is latest, -1 if b is latest
  * @private
  */
-function LastWriteWins(a: Entry, b: Entry): number {
+function LastWriteWins(a: EntryType, b: EntryType): number {
   // Ultimate conflict resolution: take the first/left argument
-  const First = (_a: Entry, _b: Entry) => 1;
+  const First = (_a: EntryType, _b: EntryType) => 1;
 
   // Sort two entries by their clock id; if same, take the first
-  const sortById = (a: Entry, b: Entry) => SortByClockId(a, b, First);
+  const sortById = (a: EntryType, b: EntryType) => SortByClockId(a, b, First);
 
   // Sort two entries by their clock time; if concurrent, resolve using sortById
-  const sortByEntryClocks = (a: Entry, b: Entry) =>
+  const sortByEntryClocks = (a: EntryType, b: EntryType) =>
     SortByClocks(a, b, sortById);
 
   return sortByEntryClocks(a, b);
@@ -35,12 +35,27 @@ function LastWriteWins(a: Entry, b: Entry): number {
  * @private
  */
 function SortByClocks(
-  a: Entry,
-  b: Entry,
-  resolveConflict: (a: Entry, b: Entry) => number
+  a: EntryType | number,
+  b: EntryType | number,
+  resolveConflict: (a: EntryType, b: EntryType) => number
 ): number {
-  const diff = compareClocks(a.clock, b.clock);
-  return diff === 0 ? resolveConflict(a, b) : diff;
+  const defaultClock: ClockType = { id: "", time: 0 };
+
+  // Extract clocks safely
+  const aClock: ClockType =
+    typeof a === "number" ? defaultClock : a.clock ?? defaultClock;
+  const bClock: ClockType =
+    typeof b === "number" ? defaultClock : b.clock ?? defaultClock;
+
+  const diff = compareClocks(aClock, bClock);
+
+  if (diff === 0) {
+    // Only call resolveConflict if both a and b are Entry
+    if (typeof a === "number" || typeof b === "number") return 0;
+    return resolveConflict(a, b);
+  }
+
+  return diff;
 }
 
 /**
@@ -52,12 +67,15 @@ function SortByClocks(
  * @private
  */
 function SortByClockId(
-  a: Entry,
-  b: Entry,
-  resolveConflict: (a: Entry, b: Entry) => number
+  a: EntryType,
+  b: EntryType,
+  resolveConflict: (a: EntryType, b: EntryType) => number
 ): number {
-  if (a.clock.id === b.clock.id) return resolveConflict(a, b);
-  return a.clock.id < b.clock.id ? -1 : 1;
+  const aClock = a.clock ?? ({ id: "", time: 0 } as ClockType);
+  const bClock = b.clock ?? ({ id: "", time: 0 } as ClockType);
+
+  if (aClock.id === bClock.id) return resolveConflict(a, b);
+  return aClock.id < bClock.id ? -1 : 1;
 }
 
 /**
@@ -68,11 +86,11 @@ function SortByClockId(
  * @private
  */
 function NoZeroes(
-  func: (a: Entry, b: Entry) => number
-): (a: Entry, b: Entry) => number {
-  const msg = `Your log's tiebreaker function, ${func.name}, returned zero and cannot be used.`;
+  func: (a: EntryType | number, b: EntryType | number) => number
+): (a: EntryType | number, b: EntryType | number) => number {
+  const msg = `Your log's tiebreaker function, ${func.name}, has returned zero and therefore cannot be used.`;
 
-  return (a: Entry, b: Entry) => {
+  return (a: EntryType | number, b: EntryType | number) => {
     const result = func(a, b);
     if (result === 0) throw new Error(msg);
     return result;

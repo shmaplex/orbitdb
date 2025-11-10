@@ -308,12 +308,15 @@ describe("Identities", () => {
 
     it("throws an error if private key is not found from keystore", async () => {
       const { publicKey, signatures, type } = identity;
+
+      // Cast to 'any' to ignore TS type checks
       const modifiedIdentity = await Identity({
         id: "this id does not exist",
         publicKey,
         signatures,
         type,
-      });
+      } as any);
+
       let signature;
       let err;
       try {
@@ -321,6 +324,7 @@ describe("Identities", () => {
       } catch (e: any) {
         err = e.toString();
       }
+
       expect(signature).toBeUndefined();
       expect(err).toBe("Error: Private signing key not found from KeyStore");
     });
@@ -378,7 +382,8 @@ describe("Identities", () => {
     it("cannot add an identity provider with missing type", () => {
       let err;
       try {
-        useIdentityProvider(NoTypeIdentityProvider);
+        // Cast to any to ignore TS type checking
+        useIdentityProvider(NoTypeIdentityProvider as any);
       } catch (e: any) {
         err = e.toString();
       }

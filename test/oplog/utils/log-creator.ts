@@ -22,7 +22,7 @@ export default class LogCreator {
       values(): Promise<{ payload: string }[]>;
     }
   >(
-    Log: new (identity: any, options: { logId: string }) => Promise<T>,
+    Log: (identity: any, options: { logId: string }) => Promise<T>,
     ipfs: any,
     identities: any[]
   ): Promise<{ log: T; expectedData: string[]; json: string[] }> {
@@ -91,7 +91,7 @@ export default class LogCreator {
       join(other: T): Promise<void>;
     }
   >(
-    Log: new (identity: any, options: { logId: string }) => Promise<T>,
+    Log: (identity: any, options: { logId: string }) => Promise<T>,
     ipfs: any,
     identities: any[]
   ): Promise<{ log: T; expectedData: string[] }> {

@@ -1,7 +1,10 @@
 import type { IPFS } from "ipfs-core-types";
-import Database, { type DatabaseInstance, type Encryption } from "../database";
+import Database, {
+  type DatabaseInstance,
+  DatabaseType,
+  type Encryption,
+} from "../database";
 import type { IdentitiesInstance } from "../identities";
-import { DatabaseType } from ".";
 
 const type = "events";
 

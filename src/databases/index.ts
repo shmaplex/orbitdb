@@ -3,27 +3,11 @@
  * @description
  * Provides various database structures for storing data.
  */
-
-import type { EventEmitter } from "node:stream";
-import type { DatabaseInstance as GeneralDatabaseInstance } from "../database";
+import type { DatabaseType } from "../database";
 import Documents from "./documents";
 import Events from "./events";
 import KeyValue from "./keyvalue";
 import KeyValueIndexed from "./keyvalue-indexed";
-
-/** Base interface for any live database instance */
-export interface DatabaseInstance extends GeneralDatabaseInstance {
-  address: string;
-  name?: string;
-  type: string;
-  events: EventEmitter;
-}
-
-/** Curried database module type (the factory) */
-export interface DatabaseType {
-  type: string;
-  (options?: any): (context?: any) => Promise<DatabaseInstance>;
-}
 
 /** Dictionary of database types keyed by `type` */
 const databaseTypes: Record<string, DatabaseType> = {};

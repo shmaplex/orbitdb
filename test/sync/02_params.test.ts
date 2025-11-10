@@ -18,11 +18,15 @@ afterAll(async () => {
 
 describe("Sync parameters", () => {
   it("throws an error when IPFS is not defined", async () => {
-    await expect(Sync({})).rejects.toThrow("An instance of ipfs is required.");
+    // Force TS to ignore missing properties
+    await expect(Sync({} as any)).rejects.toThrow(
+      "An instance of ipfs is required."
+    );
   });
 
   it("throws an error when log is not defined", async () => {
-    await expect(Sync({ ipfs: ipfs1 })).rejects.toThrow(
+    // Force TS to ignore missing 'log' property
+    await expect(Sync({ ipfs: ipfs1 } as any)).rejects.toThrow(
       "An instance of log is required."
     );
   });

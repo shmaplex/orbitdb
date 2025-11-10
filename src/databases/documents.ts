@@ -1,6 +1,9 @@
-import type { DatabaseContext, DatabaseInstance } from "../database";
+import type {
+  DatabaseContext,
+  DatabaseInstance,
+  DatabaseType,
+} from "../database";
 import Database from "../database";
-import type { DatabaseType } from ".";
 
 const type = "documents";
 

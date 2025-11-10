@@ -1,3 +1,4 @@
+// test/access-controllers/orbit-db-access-controller.test.ts
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { strictEqual, deepStrictEqual, notStrictEqual } from "assert";
 import { rimraf } from "rimraf";
@@ -11,7 +12,7 @@ import Keystore from "../../src/key-store";
 import Identities from "../../src/identities/identities";
 import OrbitDBAccessController from "../../src/access-controllers/orbitdb";
 import connectPeers from "../utils/connect-nodes";
-import { createHeliaNode } from "../utils/create-helia";
+import createHelia from "../utils/create-helia";
 
 describe("OrbitDBAccessController", () => {
   const dbPath1 = "./orbitdb/tests/orbitdb-access-controller/1";
@@ -31,7 +32,7 @@ describe("OrbitDBAccessController", () => {
 
   beforeAll(async () => {
     // Create Helia nodes using new API
-    [ipfs1, ipfs2] = await Promise.all([createHeliaNode(), createHeliaNode()]);
+    [ipfs1, ipfs2] = await Promise.all([createHelia(), createHelia()]);
     await connectPeers(ipfs1, ipfs2);
 
     keystore1 = await Keystore({ path: dbPath1 + "/keys" });

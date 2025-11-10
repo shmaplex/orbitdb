@@ -4,9 +4,8 @@ import type { IPFS } from "ipfs-core-types";
 import { pipe } from "it-pipe";
 import PQueue from "p-queue";
 import { TimeoutController } from "timeout-abort-controller";
-import type { LogType } from "./oplog";
+import type { EntryType, LogType } from "./oplog";
 import { Entry } from "./oplog";
-import type { Entry as EntryType } from "./oplog/entry";
 import pathJoin from "./utils/path-join";
 
 const DefaultTimeout = 30_000;
@@ -40,10 +39,16 @@ interface IPFSWithLibp2p extends IPFS {
       protocol: string,
       options?: { signal?: AbortSignal }
     ) => Promise<any>;
-    handle?: (protocol: string, handler: Function) => Promise<void>;
+    handle?: (
+      protocol: string,
+      handler: (opts: { connection: any; stream: any }) => Promise<void>
+    ) => Promise<void>;
     unhandle?: (protocol: string) => Promise<void>;
-    addEventListener?: (event: string, handler: Function) => void;
-    removeEventListener?: (event: string, handler: Function) => void;
+    addEventListener?: (event: string, handler: (event: any) => void) => void;
+    removeEventListener?: (
+      event: string,
+      handler: (event: any) => void
+    ) => void;
   };
 }
 

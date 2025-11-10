@@ -8,7 +8,7 @@ import waitFor from "./utils/wait-for";
 import ComposedStorage from "../src/storage/composed";
 import IPFSBlockStorage from "../src/storage/ipfs-block";
 import MemoryStorage from "../src/storage/memory";
-import { createHeliaNode } from "./utils/create-helia";
+import createHelia from "./utils/create-helia";
 import type { Helia } from "helia";
 
 const keysPath = "./testkeys";
@@ -33,7 +33,7 @@ describe("Database - Replication", () => {
   };
 
   beforeEach(async () => {
-    [ipfs1, ipfs2] = await Promise.all([createHeliaNode(), createHeliaNode()]);
+    [ipfs1, ipfs2] = await Promise.all([createHelia(), createHelia()]);
 
     await connectPeers(ipfs1, ipfs2);
 

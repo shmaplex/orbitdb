@@ -15,7 +15,7 @@ import { Database, KeyStore, Identities } from "../src/index.js";
 import LevelStorage from "../src/storage/level.js";
 import MemoryStorage from "../src/storage/memory.js";
 import testKeysPath from "./fixtures/test-keys-path.js";
-import { createHeliaNode as createHelia } from "./utils/create-helia";
+import createHelia from "./utils/create-helia";
 
 const keysPath = "./testkeys";
 

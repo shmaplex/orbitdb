@@ -1,4 +1,4 @@
-import { describe, it, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
 import { rimraf } from "rimraf";
 import OrbitDB from "../src/orbitdb.js";
 import {
@@ -17,12 +17,18 @@ import createHelia from "./utils/create-helia.js";
 
 const type = "custom!";
 
+interface CustomAccessControllerContext {
+  orbitdb: any;
+  identities: any;
+  address?: string;
+}
+
 /**
  * A simple custom access controller
  */
 const CustomAccessController =
   () =>
-  async ({ orbitdb, identities, address }) => {
+  async ({ orbitdb, identities, address }: CustomAccessControllerContext) => {
     address = pathJoin("/", type, "controller");
     return { address };
   };
@@ -71,7 +77,7 @@ describe("Add a custom access controller", () => {
 
   describe("Custom access controller", () => {
     beforeEach(() => {
-      useAccessController(CustomAccessController);
+      useAccessController(CustomAccessController as any);
     });
 
     it("creates a database with the custom access controller", async () => {
@@ -87,7 +93,7 @@ describe("Add a custom access controller", () => {
 
       let err: any;
       try {
-        useAccessController(NoTypeCustomAccessController);
+        useAccessController(NoTypeCustomAccessController as any);
       } catch (e: any) {
         err = e.toString();
       }

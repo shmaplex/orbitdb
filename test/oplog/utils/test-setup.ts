@@ -1,3 +1,4 @@
+// test/oplog/utils/test-setup.ts
 import { copy } from "fs-extra";
 import { rimraf } from "rimraf";
 import { Identities, KeyStore } from "../../../src/index.js";
@@ -28,4 +29,7 @@ export async function cleanup(keystore?: any) {
   await rimraf(keysPath);
 }
 
-export const last = <T>(arr: T[]): T => arr[arr.length - 1];
+// Fixed generic function
+export function last<T>(arr: T[]): T {
+  return arr[arr.length - 1];
+}

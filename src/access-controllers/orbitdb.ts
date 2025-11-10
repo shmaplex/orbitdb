@@ -107,6 +107,8 @@ const OrbitDBAccessController: AccessControllerModule = Object.assign(
       };
 
       const canAppend = async (entry: LogEntry): Promise<boolean> => {
+        if (!entry.identity) return false;
+
         const writer = await identities.getIdentity(entry.identity);
         if (!writer) return false;
 

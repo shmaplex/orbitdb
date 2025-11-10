@@ -1,5 +1,5 @@
 // test/utils/create-helia.ts
-import { createHelia, type Helia } from "helia";
+import { createHelia as createHeliaInstance, type Helia } from "helia";
 import { bitswap } from "@helia/block-brokers";
 import { MemoryBlockstore } from "blockstore-core/memory";
 import { LevelBlockstore } from "blockstore-level";
@@ -50,11 +50,11 @@ const libp2pBrowserConfig = {
  *
  * @example
  * ```ts
- * const helia = await createHeliaNode({ directory: './data' })
+ * const helia = await createHelia({ directory: './data' })
  * console.log('Peer ID:', helia.libp2p.peerId.toString())
  * ```
  */
-export async function createHeliaNode(
+export default async function createHelia(
   options: { directory?: string } = {}
 ): Promise<Helia> {
   const blockstore = options.directory
@@ -63,7 +63,7 @@ export async function createHeliaNode(
 
   const libp2pConfig = isBrowser() ? libp2pBrowserConfig : libp2pNodeConfig;
 
-  return createHelia({
+  return createHeliaInstance({
     blockstore,
     blockBrokers: [bitswap()],
     libp2p: libp2pConfig,

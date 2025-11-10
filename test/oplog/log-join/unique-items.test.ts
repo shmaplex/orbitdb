@@ -1,10 +1,15 @@
+// test/oplog/log-join/unique-items.test.ts
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
 import { Log } from "../../../src/index.js";
-import { setupIdentities, cleanup } from "../utils/test-setup";
+import { setupIdentities, cleanup, last } from "../utils/test-setup";
+import { EntryType } from "../../../src/oplog";
+import { LogType } from "../../../src/oplog/index.js";
 
 let keystore: any;
-let log1: any, log2: any;
-let testIdentities: any[];
+let log1: LogType, log2: LogType;
+let testIdentities: Awaited<
+  ReturnType<typeof setupIdentities>
+>["testIdentities"];
 
 describe("Log - Join (unique items)", () => {
   beforeAll(async () => {
@@ -32,10 +37,10 @@ describe("Log - Join (unique items)", () => {
     await log1.join(log2);
 
     const expectedData = ["helloA1", "helloB1", "helloA2", "helloB2"];
-    const values = await log1.values();
+    const values: EntryType[] = await log1.values();
 
     expect(values.length).toBe(4);
-    expect(values.map((e: any) => e.payload)).toEqual(expectedData);
-    expect(last(values).next.length).toBe(1);
+    expect(values.map((e) => e.payload)).toEqual(expectedData);
+    expect((last(values).next ?? []).length).toBe(1);
   });
 });

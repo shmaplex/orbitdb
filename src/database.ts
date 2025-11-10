@@ -59,6 +59,7 @@ export interface DatabaseContext {
 export interface DatabaseInstance {
   address: string;
   name?: string;
+  type?: string;
   identity?: IdentitiesInstance;
   meta: Record<string, any>;
   close: () => Promise<void>;
@@ -69,6 +70,12 @@ export interface DatabaseInstance {
   peers: Set<string>;
   events: EventEmitter;
   access?: OrbitDBAccessControllerInstance;
+}
+
+/** Curried database module type (the factory) */
+export interface DatabaseType {
+  type: string;
+  (options?: any): (context?: any) => Promise<DatabaseInstance>;
 }
 
 // ---- Database Implementation ----

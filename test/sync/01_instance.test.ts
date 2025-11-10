@@ -75,18 +75,6 @@ describe("Sync instance", () => {
   });
 });
 
-describe("Sync parameters", () => {
-  it("throws an error when IPFS is not defined", async () => {
-    await expect(Sync({})).rejects.toThrow("An instance of ipfs is required.");
-  });
-
-  it("throws an error when log is not defined", async () => {
-    await expect(Sync({ ipfs: ipfs1 })).rejects.toThrow(
-      "An instance of log is required."
-    );
-  });
-});
-
 describe("Syncing automatically", () => {
   let sync1: any, sync2: any;
   let log1: any, log2: any;

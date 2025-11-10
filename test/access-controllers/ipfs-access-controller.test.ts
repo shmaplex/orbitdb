@@ -1,3 +1,4 @@
+// test/access-controllers/ipfs-access-controller.test.ts
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { strictEqual, deepStrictEqual, notStrictEqual } from "assert";
 import { rimraf } from "rimraf";
@@ -8,7 +9,7 @@ import Keystore from "../../src/key-store";
 import Identities from "../../src/identities/identities";
 import IPFSAccessController from "../../src/access-controllers/ipfs";
 import connectPeers from "../utils/connect-nodes";
-import { createHeliaNode } from "../utils/create-helia";
+import createHelia from "../utils/create-helia";
 import type { EntryType } from "../../src/oplog";
 
 describe("IPFSAccessController", () => {
@@ -30,7 +31,7 @@ describe("IPFSAccessController", () => {
   >;
 
   beforeAll(async () => {
-    [ipfs1, ipfs2] = await Promise.all([createHeliaNode(), createHeliaNode()]);
+    [ipfs1, ipfs2] = await Promise.all([createHelia(), createHelia()]);
     await connectPeers(ipfs1, ipfs2);
 
     keystore1 = await Keystore({ path: dbPath1 + "/keys" });
@@ -79,13 +80,13 @@ describe("IPFSAccessController", () => {
     });
 
     it("user with write access can append", async () => {
-      const mockEntry: EntryType = { identity: testIdentity1.hash, v: 1 };
+      const mockEntry: EntryType = { identity: testIdentity1.hash, value: 1 };
       const canAppend = await accessController.canAppend(mockEntry);
       strictEqual(canAppend, true);
     });
 
     it("user without write cannot append", async () => {
-      const mockEntry: EntryType = { identity: testIdentity2.hash, v: 1 };
+      const mockEntry: EntryType = { identity: testIdentity2.hash, value: 1 };
       const canAppend = await accessController.canAppend(mockEntry);
       strictEqual(canAppend, false);
     });

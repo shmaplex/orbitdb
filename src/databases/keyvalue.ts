@@ -1,5 +1,8 @@
-import Database, { type DatabaseContext } from "../database";
-import type { DatabaseInstance, DatabaseType } from ".";
+import Database, {
+  type DatabaseContext,
+  type DatabaseInstance,
+  type DatabaseType,
+} from "../database";
 
 const type = "keyvalue";
 

@@ -1,6 +1,7 @@
 import * as dagCbor from "@ipld/dag-cbor";
 import { base58btc } from "multiformats/bases/base58";
 import * as Block from "multiformats/block";
+import type { CID } from "multiformats/cid";
 import { sha256 } from "multiformats/hashes/sha2";
 import Clock, { type ClockType } from "./clock";
 
@@ -9,12 +10,12 @@ const hasher = sha256;
 const hashStringEncoding = base58btc;
 
 /** Represents a log entry */
-export interface Entry {
+export interface EntryType {
   id?: string;
   payload?: unknown;
-  next?: string[];
-  refs?: string[];
-  clock?: ClockType;
+  next: string[];
+  refs: string[];
+  clock: ClockType;
   v: number;
   key?: string;
   identity?: string;
@@ -40,13 +41,13 @@ export type DecryptFn = (data: Uint8Array) => Promise<Uint8Array>;
  */
 export const create = async (
   identity: Identity,
-  id: string,
+  id: string | null,
   payload: unknown,
   encryptPayloadFn?: EncryptFn,
   clock: ClockType | null = null,
-  next: Array<string | Entry> = [],
-  refs: Array<string | Entry> = []
-): Promise<Entry> => {
+  next: Array<string | EntryType> = [],
+  refs: Array<string | EntryType> = []
+): Promise<EntryType> => {
   if (!identity) throw new Error("Identity is required");
   if (!id) throw new Error("Entry requires an id");
   if (payload == null) throw new Error("Entry requires a payload");
@@ -63,45 +64,51 @@ export const create = async (
     encryptedPayload = await encryptPayloadFn(encodedPayloadBytes);
   }
 
-  const entry: Entry = {
-    id,
-    payload: encryptedPayload ?? payload,
+  const entry: EntryType = {
+    id, // For determining a unique chain
+    payload: encryptedPayload ?? payload, // Can be any dag-cbor encodeable data
     next: next.map((n) => {
       if (typeof n === "string") return n;
       if (!n.hash) throw new Error("Next entry missing hash");
       return n.hash;
-    }),
+    }), // Array of strings of CIDs
     refs: refs.map((r) => {
       if (typeof r === "string") return r;
       if (!r.hash) throw new Error("Ref entry missing hash");
       return r.hash;
-    }),
+    }), // Array of strings of CIDs
     clock: entryClock,
-    v: 2,
+    v: 2, // To tag the version of this data structure
     key: "",
     identity: "",
     sig: "",
   };
 
-  const { bytes } = await Block.encode<Entry, number, number>({
+  const { bytes } = await Block.encode<EntryType, number, number>({
     value: entry,
     codec,
     hasher,
   });
+
+  // Sign the entry bytes
   const signature = await identity.sign(identity, bytes);
 
+  // Populate signature and identity info
   entry.key = identity.publicKey;
   entry.identity = identity.hash;
   entry.sig = signature;
-  entry.payload = payload;
 
+  // If encrypted payload exists, keep it in _payload
   if (encryptPayloadFn) entry._payload = encryptedPayload;
+
+  // Restore the original payload for convenience
+  entry.payload = payload;
 
   return entry;
 };
 
 /** Checks if an object is an Entry */
-export const isEntry = (obj: unknown): obj is Entry =>
+export const isEntry = (obj: unknown): obj is EntryType =>
   typeof obj === "object" &&
   obj !== null &&
   "id" in obj &&
@@ -112,7 +119,7 @@ export const isEntry = (obj: unknown): obj is Entry =>
   "refs" in obj;
 
 /** Determines whether two entries are equal by hash */
-export const isEqual = (a: Entry, b: Entry): boolean =>
+export const isEqual = (a: EntryType, b: EntryType): boolean =>
   !!(a && b && a.hash && b.hash && a.hash === b.hash);
 
 /** Verifies an entry signature */
@@ -120,7 +127,7 @@ export const verify = async (
   identities: {
     verify(sig: string, key: string, bytes: Uint8Array): Promise<boolean>;
   },
-  entry: Entry
+  entry: EntryType
 ): Promise<boolean> => {
   if (!identities) throw new Error("Identities is required");
   if (!isEntry(entry)) throw new Error("Invalid Log entry");
@@ -133,7 +140,7 @@ export const verify = async (
     next: entry.next,
     refs: entry.refs,
     clock: entry.clock,
-    v: entry.v,
+    value: entry.v,
   };
 
   const { bytes } = await Block.encode<typeof value, number, number>({
@@ -149,21 +156,18 @@ export const decode = async (
   inputBytes: Uint8Array,
   decryptEntryFn?: DecryptFn,
   decryptPayloadFn?: DecryptFn
-): Promise<Entry> => {
-  // Use a local variable to avoid mutating the parameter
+): Promise<EntryType> => {
   let bytesToDecode = inputBytes;
-  let cid: any;
+  let cid: CID | undefined; // Initialize as undefined
 
   // Optionally decrypt the full entry
   if (decryptEntryFn) {
     try {
-      // Decode the block first (value is unknown)
       const encryptedBlock = await Block.decode<Uint8Array, number, number>({
         bytes: bytesToDecode,
         codec,
         hasher,
       });
-      // Decrypt the bytes
       bytesToDecode = await decryptEntryFn(encryptedBlock.value);
       cid = encryptedBlock.cid;
     } catch {
@@ -172,12 +176,12 @@ export const decode = async (
   }
 
   // Decode the Entry block
-  const decodedBlock = await Block.decode<Entry, number, number>({
+  const decodedBlock = await Block.decode<EntryType, number, number>({
     bytes: bytesToDecode,
     codec,
     hasher,
   });
-  const entry: Entry = decodedBlock.value;
+  const entry: EntryType = decodedBlock.value;
 
   // Optionally decrypt the payload
   if (decryptPayloadFn && entry.payload instanceof Uint8Array) {
@@ -199,7 +203,7 @@ export const decode = async (
     }
   }
 
-  // Set the hash from CID
+  // Use CID from either decryption or decoded block
   cid = cid ?? decodedBlock.cid;
   entry.hash = cid.toString(hashStringEncoding);
 
@@ -208,7 +212,7 @@ export const decode = async (
 
 /** Encodes an Entry and returns its hash and bytes */
 export const encode = async (
-  entry: Entry,
+  entry: EntryType,
   encryptEntryFn?: EncryptFn,
   encryptPayloadFn?: EncryptFn
 ): Promise<{ hash: string; bytes: Uint8Array }> => {

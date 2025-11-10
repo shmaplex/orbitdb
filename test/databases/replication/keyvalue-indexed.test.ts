@@ -8,6 +8,7 @@ import testKeysPath from "../../fixtures/test-keys-path.js";
 import connectPeers from "../../utils/connect-nodes.js";
 import waitFor from "../../utils/wait-for.js";
 import createHelia from "../../utils/create-helia.js";
+import { EntryType } from "../../../src/oplog/index.js";
 
 const keysPath = "./testkeys";
 
@@ -314,8 +315,10 @@ describe("KeyValueIndexed Database Replication", () => {
       directory: "./orbitdb1",
     });
 
-    const onUpdate3 = async (entry: any) => {
-      replicated3 = expectedEntryHash3 && entry.hash === expectedEntryHash3;
+    const onUpdate3 = async (entry: EntryType) => {
+      replicated3 = Boolean(
+        expectedEntryHash3 && entry.hash === expectedEntryHash3
+      );
     };
 
     kv1.events.on("update", onUpdate3);
@@ -335,8 +338,10 @@ describe("KeyValueIndexed Database Replication", () => {
       directory: "./orbitdb2",
     });
 
-    const onUpdate2 = (entry: any) => {
-      replicated2 = expectedEntryHash2 && entry.hash === expectedEntryHash2;
+    const onUpdate2 = (entry: EntryType) => {
+      replicated2 = Boolean(
+        expectedEntryHash2 && entry.hash === expectedEntryHash2
+      );
     };
 
     kv2.events.on("update", onUpdate2);

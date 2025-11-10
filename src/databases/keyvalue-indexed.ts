@@ -1,8 +1,11 @@
 // src/databases/keyvalue-indexed.ts
 import type { IPFS } from "ipfs-core-types";
-import type { DatabaseContext, DatabaseInstance } from "../database";
+import type {
+  DatabaseContext,
+  DatabaseInstance,
+  DatabaseType,
+} from "../database";
 import pathJoin from "../utils/path-join";
-import type { DatabaseType } from ".";
 import { Index, type IndexedEntry } from "./indexed";
 import KeyValue from "./keyvalue";
 

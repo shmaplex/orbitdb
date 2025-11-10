@@ -10,7 +10,7 @@ import OrbitDBAddress, {
   isValidAddress,
   type OrbitDBAddressType,
 } from "./address";
-import type { DatabaseInstance, DatabaseType } from "./databases";
+import type { DatabaseInstance, DatabaseType } from "./database";
 import { getDatabaseType } from "./databases";
 import {
   Identities,

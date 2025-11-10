@@ -1,7 +1,7 @@
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { rimraf } from "rimraf";
 import ManifestStore from "../src/manifest-store";
-import { createHeliaNode } from "./utils/create-helia";
+import createHelia from "./utils/create-helia";
 import { Helia } from "helia";
 
 /**
@@ -18,7 +18,7 @@ describe("Manifest", () => {
    * Initialize Helia IPFS node and ManifestStore before all tests.
    */
   beforeAll(async () => {
-    ipfs = await createHeliaNode({ directory: repo });
+    ipfs = await createHelia({ directory: repo });
     manifestStore = await ManifestStore({ ipfs });
   });
 

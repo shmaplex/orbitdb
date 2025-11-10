@@ -1,3 +1,5 @@
+import { IdentityProvider } from "../../../src/identities";
+
 /**
  * The type of the custom identity provider.
  */
@@ -8,13 +10,11 @@ const type = "custom";
  * @param data - The data to verify.
  * @returns A promise that resolves to `true` if verification is successful.
  */
-const verifyIdentity = async (data: unknown): Promise<boolean> => {
-  return true;
-};
+const verifyIdentity = async (data: unknown): Promise<boolean> => true;
 
 /**
  * Factory function for creating a custom identity provider.
- * @returns An async function that resolves to the identity provider API.
+ * Returns an async function to keep backward compatibility.
  */
 const CustomIdentityProvider =
   () =>
@@ -22,20 +22,14 @@ const CustomIdentityProvider =
   async () => {
     /**
      * Returns the ID of the identity provider.
-     * @returns The string ID of the provider.
      */
-    const getId = (): string => {
-      return "custom";
-    };
+    const getId = (): string => "custom";
 
     /**
      * Signs identity data.
      * @param data - The data to sign.
-     * @returns A signature string.
      */
-    const signIdentity = (data: unknown): string => {
-      return `signature '${data}'`;
-    };
+    const signIdentity = (data: unknown): string => `signature '${data}'`;
 
     return {
       getId,
