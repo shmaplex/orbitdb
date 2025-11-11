@@ -7,6 +7,9 @@ import {
   Identities,
   KeyStore,
   MemoryStorage,
+  KeyStoreType,
+  IdentitiesInstance,
+  EntryType,
 } from "../../src/index.js";
 import testKeysPath from "../fixtures/test-keys-path.js";
 
@@ -14,8 +17,8 @@ const { create } = Entry;
 const keysPath = "./testkeys";
 
 describe("Log", () => {
-  let keystore: KeyStore;
-  let identities: Identities;
+  let keystore: KeyStoreType;
+  let identities: IdentitiesInstance;
   let testIdentity: any;
 
   beforeAll(async () => {
@@ -156,7 +159,9 @@ describe("Log", () => {
 
     it("creates default public AccessController if not defined", async () => {
       const log = await Log(testIdentity);
-      const anyoneCanAppend = await log.access.canAppend("any");
+      const dummyEntry: EntryType = { payload: "any", hash: "x", id: log.id };
+      const anyoneCanAppend = await log.access.canAppend(dummyEntry);
+      // const anyoneCanAppend = await log.access.canAppend("any");
       expect(log.access).not.toBeUndefined();
       expect(anyoneCanAppend).toBe(true);
     });

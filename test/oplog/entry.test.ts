@@ -35,12 +35,12 @@ describe("Entry", () => {
       const { hash } = await Entry.encode(entry);
       strictEqual(hash, expectedHash);
       strictEqual(entry.id, "A");
-      strictEqual(entry.clock.id, testIdentity.publicKey);
-      strictEqual(entry.clock.time, 0);
+      strictEqual(entry.clock!.id, testIdentity.publicKey);
+      strictEqual(entry.clock!.time, 0);
       strictEqual(entry.v, 2);
       strictEqual(entry.payload, "hello");
-      strictEqual(entry.next.length, 0);
-      strictEqual(entry.refs.length, 0);
+      strictEqual(entry.next!!.length, 0);
+      strictEqual(entry.refs!.length, 0);
     });
 
     it("creates an entry with payload", async () => {
@@ -51,11 +51,11 @@ describe("Entry", () => {
       strictEqual(hash, expectedHash);
       strictEqual(entry.payload, payload);
       strictEqual(entry.id, "A");
-      strictEqual(entry.clock.id, testIdentity.publicKey);
-      strictEqual(entry.clock.time, 0);
+      strictEqual(entry.clock!.id, testIdentity.publicKey);
+      strictEqual(entry.clock!.time, 0);
       strictEqual(entry.v, 2);
-      strictEqual(entry.next.length, 0);
-      strictEqual(entry.refs.length, 0);
+      strictEqual(entry.next!.length, 0);
+      strictEqual(entry.refs!.length, 0);
     });
 
     it("retrieves the identity from an entry", async () => {
@@ -78,7 +78,7 @@ describe("Entry", () => {
       const payload1 = "hello world";
       const payload2 = "hello again";
       const entry1 = await create(testIdentity, "A", payload1);
-      entry1.clock = tickClock(entry1.clock);
+      entry1.clock = tickClock(entry1.clock!);
       const entry2 = await create(
         testIdentity,
         "A",
@@ -88,9 +88,9 @@ describe("Entry", () => {
         [entry1]
       );
       strictEqual(entry2.payload, payload2);
-      strictEqual(entry2.next.length, 1);
-      strictEqual(entry2.clock.id, testIdentity.publicKey);
-      strictEqual(entry2.clock.time, 1);
+      strictEqual(entry2.next!.length, 1);
+      strictEqual(entry2.clock!.id, testIdentity.publicKey);
+      strictEqual(entry2.clock!.time, 1);
     });
 
     it("`next` parameter can be an array of strings", async () => {
@@ -99,13 +99,13 @@ describe("Entry", () => {
       const entry2 = await create(testIdentity, "A", "hello2", null, null, [
         hash,
       ]);
-      strictEqual(typeof entry2.next[0] === "string", true);
+      strictEqual(typeof entry2.next![0] === "string", true);
     });
 
     it("throws an error if no params are defined", async () => {
       let err: any;
       try {
-        await create();
+        await create(null as any, null as any, null as any);
       } catch (e) {
         err = e;
       }
@@ -115,7 +115,7 @@ describe("Entry", () => {
     it("throws an error if identity is not defined", async () => {
       let err: any;
       try {
-        await create(null, "A", "hello2");
+        await create(null as any, "A", "hello2");
       } catch (e) {
         err = e;
       }
@@ -145,7 +145,7 @@ describe("Entry", () => {
     it("throws an error if next is not an array", async () => {
       let err: any;
       try {
-        await create(testIdentity, "A", "hello", null, null, {});
+        await create(testIdentity, "A", "hello", null, null, {} as any);
       } catch (e) {
         err = e;
       }

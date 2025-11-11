@@ -1,3 +1,7 @@
+import { IPFS } from "ipfs-core-types";
+import { EntryType, IdentityType } from "../../../src";
+import { LogInstance, LogOptions } from "../../../src/oplog/log";
+
 /**
  * Represents a utility class for creating log instances with pre-populated entries.
  */
@@ -15,34 +19,22 @@ export default class LogCreator {
    *  - `expectedData`: Array of expected entry payloads in order.
    *  - `json`: Array of actual payloads from the log.
    */
-  static async createLogWithSixteenEntries<
-    T extends {
-      append(payload: string): Promise<void>;
-      join(other: T): Promise<void>;
-      values(): Promise<{ payload: string }[]>;
-    }
-  >(
-    Log: (identity: any, options: { logId: string }) => Promise<T>,
-    ipfs: any,
-    identities: any[]
-  ): Promise<{ log: T; expectedData: string[]; json: string[] }> {
+  static async createLogWithSixteenEntries(
+    Log: (identity: IdentityType, options: LogOptions) => Promise<LogInstance>,
+    ipfs: IPFS,
+    identities: IdentityType[]
+  ): Promise<{ log: LogInstance; expectedData: string[]; json: string[] }> {
     const create = async () => {
       const logA = await Log(identities[0], { logId: "X" });
       const logB = await Log(identities[1], { logId: "X" });
       const log3 = await Log(identities[2], { logId: "X" });
       const log = await Log(identities[3], { logId: "X" });
 
-      for (let i = 1; i <= 5; i++) {
-        await logA.append("entryA" + i);
-      }
-      for (let i = 1; i <= 5; i++) {
-        await logB.append("entryB" + i);
-      }
+      for (let i = 1; i <= 5; i++) await logA.append("entryA" + i);
+      for (let i = 1; i <= 5; i++) await logB.append("entryB" + i);
       await log3.join(logA);
       await log3.join(logB);
-      for (let i = 6; i <= 10; i++) {
-        await logA.append("entryA" + i);
-      }
+      for (let i = 6; i <= 10; i++) await logA.append("entryA" + i);
       await log.join(log3);
       await log.append("entryC0");
       await log.join(logA);
@@ -69,7 +61,7 @@ export default class LogCreator {
     ];
 
     const log = await create();
-    const json = (await log.values()).map((e) => e.payload);
+    const json = (await log.values()).map((e) => e.payload as string);
     return { log, expectedData, json };
   }
 

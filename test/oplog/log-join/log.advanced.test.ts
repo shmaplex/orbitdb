@@ -1,16 +1,18 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import MemoryStorage from "../../../src/storage/memory";
 import KeyStore from "../../../src/key-store";
-import { Identities } from "../../../src/identities";
-import { Log } from "../../../src/oplog";
-import { EntryType } from "../../../src/oplog";
+import { Identities, type IdentityType } from "../../../src/identities";
+import { Log, type EntryType } from "../../../src/oplog";
 
 let keystore: Awaited<ReturnType<typeof KeyStore>>;
 let identities: Awaited<ReturnType<typeof Identities>>;
+let me: IdentityType;
 
 beforeEach(async () => {
   keystore = await KeyStore();
   identities = await Identities({ keystore });
+  // Create a default identity to use in all logs
+  me = await identities.createIdentity();
 });
 
 describe("Advanced Log Joins", () => {
@@ -18,12 +20,12 @@ describe("Advanced Log Joins", () => {
     const storage1 = await MemoryStorage();
     const storage2 = await MemoryStorage();
 
-    const log1 = await Log(identities, {
+    const log1 = await Log(me, {
       entryStorage: storage1,
       headsStorage: storage1,
       indexStorage: storage1,
     });
-    const log2 = await Log(identities, {
+    const log2 = await Log(me, {
       entryStorage: storage2,
       headsStorage: storage2,
       indexStorage: storage2,
@@ -46,12 +48,12 @@ describe("Advanced Log Joins", () => {
     const storageA = await MemoryStorage();
     const storageB = await MemoryStorage();
 
-    const logA = await Log(identities, {
+    const logA = await Log(me, {
       entryStorage: storageA,
       headsStorage: storageA,
       indexStorage: storageA,
     });
-    const logB = await Log(identities, {
+    const logB = await Log(me, {
       entryStorage: storageB,
       headsStorage: storageB,
       indexStorage: storageB,
@@ -76,7 +78,7 @@ describe("Advanced Log Joins", () => {
     const logs = await Promise.all(
       Array.from({ length: 4 }, async () => {
         const storage = await MemoryStorage();
-        return Log(identities, {
+        return Log(me, {
           entryStorage: storage,
           headsStorage: storage,
           indexStorage: storage,
@@ -84,7 +86,7 @@ describe("Advanced Log Joins", () => {
       })
     );
 
-    await Promise.all(logs.map((l, i) => l.append(`entry${i + 1}`)));
+    await Promise.all(logs.map((l: any, i: any) => l.append(`entry${i + 1}`)));
 
     for (let i = 1; i < logs.length; i++) {
       await logs[0].join(logs[i]);
@@ -102,12 +104,12 @@ describe("Advanced Log Joins", () => {
     const storage1 = await MemoryStorage();
     const storage2 = await MemoryStorage();
 
-    const log1 = await Log(identities, {
+    const log1 = await Log(me, {
       entryStorage: storage1,
       headsStorage: storage1,
       indexStorage: storage1,
     });
-    const log2 = await Log(identities, {
+    const log2 = await Log(me, {
       entryStorage: storage2,
       headsStorage: storage2,
       indexStorage: storage2,
@@ -122,13 +124,12 @@ describe("Advanced Log Joins", () => {
 
     const postClock = await log1.clock();
 
-    // Clock is object { id: string, time: number }
     expect(postClock.time).toBeGreaterThan(preClock.time);
   });
 
   it("doesn't add an entry if already in the log", async () => {
     const storage = await MemoryStorage();
-    const log = await Log(identities, {
+    const log = await Log(me, {
       entryStorage: storage,
       headsStorage: storage,
       indexStorage: storage,
@@ -144,7 +145,7 @@ describe("Advanced Log Joins", () => {
 
   it("replaces heads if new entry is a new head", async () => {
     const storage = await MemoryStorage();
-    const log = await Log(identities, {
+    const log = await Log(me, {
       entryStorage: storage,
       headsStorage: storage,
       indexStorage: storage,
@@ -161,12 +162,12 @@ describe("Advanced Log Joins", () => {
     const storageA = await MemoryStorage();
     const storageB = await MemoryStorage();
 
-    const logA = await Log(identities, {
+    const logA = await Log(me, {
       entryStorage: storageA,
       headsStorage: storageA,
       indexStorage: storageA,
     });
-    const logB = await Log(identities, {
+    const logB = await Log(me, {
       entryStorage: storageB,
       headsStorage: storageB,
       indexStorage: storageB,
@@ -186,7 +187,7 @@ describe("Advanced Log Joins", () => {
 describe("Entry Verification and Signatures", () => {
   it("throws if entry payload is missing", async () => {
     const storage = await MemoryStorage();
-    const log = await Log(identities, {
+    const log = await Log(me, {
       entryStorage: storage,
       headsStorage: storage,
       indexStorage: storage,
@@ -203,7 +204,7 @@ describe("Entry Verification and Signatures", () => {
 
   it("throws if entry key is missing", async () => {
     const storage = await MemoryStorage();
-    const log = await Log(identities, {
+    const log = await Log(me, {
       entryStorage: storage,
       headsStorage: storage,
       indexStorage: storage,
@@ -216,7 +217,7 @@ describe("Entry Verification and Signatures", () => {
 
   it("throws if entry signature is missing", async () => {
     const storage = await MemoryStorage();
-    const log = await Log(identities, {
+    const log = await Log(me, {
       entryStorage: storage,
       headsStorage: storage,
       indexStorage: storage,
@@ -229,7 +230,7 @@ describe("Entry Verification and Signatures", () => {
 
   it("throws if entry signature is invalid", async () => {
     const storage = await MemoryStorage();
-    const log = await Log(identities, {
+    const log = await Log(me, {
       entryStorage: storage,
       headsStorage: storage,
       indexStorage: storage,

@@ -15,6 +15,7 @@ import {
   Identities,
   KeyStore,
   IPFSBlockStorage,
+  KeyStoreType,
 } from "../../src/index.js";
 import testKeysPath from "../fixtures/test-keys-path.js";
 import connectPeers from "../utils/connect-nodes.js";
@@ -26,7 +27,7 @@ const keysPath = "./testkeys";
 describe("Log - Replication", () => {
   let ipfs1: any, ipfs2: any;
   let id1: any, id2: any;
-  let keystore: KeyStore;
+  let keystore: KeyStoreType;
   let identities1: any, identities2: any;
   let testIdentity1: any, testIdentity2: any;
   let storage1: any, storage2: any;

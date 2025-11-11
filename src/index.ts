@@ -7,6 +7,7 @@
 import OrbitDBAddress from "./address";
 import Database from "./database";
 import KeyStore from "./key-store";
+import { Log } from "./oplog";
 
 // Runtime exports
 export * from "./access-controllers";
@@ -18,8 +19,9 @@ export * from "./key-store";
 export * from "./manifest-store";
 export * from "./oplog";
 export * from "./orbitdb";
+export { default as createOrbitDB } from "./orbitdb";
 export * from "./storage";
 export * from "./sync";
 export * from "./utils";
 
-export { KeyStore, OrbitDBAddress, Database };
+export { Log, KeyStore, OrbitDBAddress, Database };

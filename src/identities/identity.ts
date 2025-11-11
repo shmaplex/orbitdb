@@ -12,11 +12,11 @@ const hashStringEncoding = base58btc;
  */
 export interface IdentityType {
   id: string;
-  publicKey: { raw: string; [key: string]: unknown };
+  publicKey: any;
   signatures: { id: unknown; publicKey: unknown; [key: string]: unknown };
   type: string;
-  sign: (data: Uint8Array) => Promise<Uint8Array>;
-  verify: (data: Uint8Array, signature: Uint8Array) => Promise<boolean>;
+  sign: (...args: any[]) => Promise<any>;
+  verify: (...args: any[]) => Promise<boolean>;
   hash?: string;
   bytes?: Uint8Array;
 }
@@ -26,18 +26,18 @@ export interface IdentityType {
  */
 interface IdentitySerializable {
   id: string;
-  publicKey: { raw: string; [key: string]: unknown };
+  publicKey: string;
   signatures: { id: unknown; publicKey: unknown; [key: string]: unknown };
   type: string;
 }
 
 type IdentityInput = Partial<{
   id: string;
-  publicKey: string | { raw: string; [key: string]: unknown };
+  publicKey: any;
   signatures: { id?: unknown; publicKey?: unknown; [key: string]: unknown };
   type: string;
-  sign: (data: Uint8Array) => Promise<Uint8Array>;
-  verify: (data: Uint8Array, signature: Uint8Array) => Promise<boolean>;
+  sign: (...args: any[]) => Promise<any>;
+  verify: (...args: any[]) => Promise<boolean>;
 }>;
 
 /**
@@ -55,12 +55,6 @@ const Identity = async ({
 }: IdentityInput = {}): Promise<IdentityType> => {
   if (!id) throw new Error("Identity id is required");
   if (!publicKey) throw new Error("Invalid public key");
-
-  // Normalize publicKey to object with `raw` property
-  const normalizedPublicKey =
-    typeof publicKey === "string" ? { raw: publicKey } : publicKey;
-  if (!normalizedPublicKey.raw) throw new Error("Invalid public key");
-
   if (!signatures) throw new Error("Signatures object is required");
   if (!signatures.id) throw new Error("Signature of id is required");
   if (!signatures.publicKey)
@@ -69,19 +63,19 @@ const Identity = async ({
 
   const signFn =
     sign ||
-    (async (_data: Uint8Array) => {
+    (async (..._args: any[]) => {
       throw new Error("sign function not provided");
     });
 
   const verifyFn =
     verify ||
-    (async (_data: Uint8Array, _sig: Uint8Array) => {
+    (async (..._args: any[]) => {
       throw new Error("verify function not provided");
     });
 
   const identity: IdentityType = {
     id,
-    publicKey: normalizedPublicKey,
+    publicKey,
     signatures: signatures as {
       id: unknown;
       publicKey: unknown;
@@ -94,7 +88,7 @@ const Identity = async ({
 
   const { hash, bytes } = await _encodeIdentity({
     id,
-    publicKey: normalizedPublicKey,
+    publicKey,
     signatures: identity.signatures,
     type,
   });
@@ -128,8 +122,8 @@ const _encodeIdentity = async (
  */
 const decodeIdentity = async (
   bytes: Uint8Array,
-  sign?: (data: Uint8Array) => Promise<Uint8Array>,
-  verify?: (data: Uint8Array, signature: Uint8Array) => Promise<boolean>
+  sign?: (...args: any[]) => Promise<any>,
+  verify?: (...args: any[]) => Promise<boolean>
 ): Promise<IdentityType> => {
   const { value } = await Block.decode({ bytes, codec, hasher });
 
@@ -159,7 +153,7 @@ const isIdentity = (identity: any): identity is IdentityType => {
     identity.hash &&
     identity.bytes &&
     identity.publicKey &&
-    typeof identity.publicKey.raw === "string" &&
+    typeof identity.publicKey === "string" &&
     identity.signatures &&
     identity.signatures.id &&
     identity.signatures.publicKey &&
@@ -181,7 +175,7 @@ const isEqual = (
     a.id === b.id &&
     a.hash === b.hash &&
     a.type === b.type &&
-    a.publicKey.raw === b.publicKey.raw &&
+    a.publicKey === b.publicKey &&
     a.signatures.id === b.signatures.id &&
     a.signatures.publicKey === b.signatures.publicKey
   );

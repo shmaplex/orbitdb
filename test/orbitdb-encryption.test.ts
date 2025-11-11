@@ -1,10 +1,10 @@
 import { describe, it, beforeAll, afterAll, afterEach, expect } from "vitest";
 import { rimraf } from "rimraf";
 import path from "path";
-import { createOrbitDB } from "../src/index.js";
-import connectPeers from "./utils/connect-nodes.js";
-import waitFor from "./utils/wait-for.js";
-import createHelia from "./utils/create-helia.js";
+import { createOrbitDB } from "../src/index";
+import connectPeers from "./utils/connect-nodes";
+import waitFor from "./utils/wait-for";
+import createHelia from "./utils/create-helia";
 
 import * as Block from "multiformats/block";
 import * as dagCbor from "@ipld/dag-cbor";
@@ -293,6 +293,11 @@ describe("Encryption", () => {
     it("payload bytes are encrypted in storage", async () => {
       let error: any;
 
+      type EntityType = {
+        payload: Uint8Array | unknown;
+        [key: string]: unknown;
+      };
+
       const encryption = { data: dataEncryption };
       db1 = await orbitdb1.open("encryption-test-1", { encryption });
 
@@ -302,13 +307,26 @@ describe("Encryption", () => {
 
       const hash1 = await db1.add("record 1");
       const bytes = await db1.log.storage.get(hash1);
-      const { value } = await Block.decode({ bytes, codec, hasher });
+
+      // Decode the entry block
+      const { value } = await Block.decode<
+        EntityType,
+        typeof codec.code,
+        typeof hasher.code
+      >({ bytes, codec, hasher });
+
       const payload = value.payload;
 
-      expect(payload.constructor).toBe(Uint8Array);
+      // Ensure payload is Uint8Array
+      expect(payload).toBeInstanceOf(Uint8Array);
 
       try {
-        await Block.decode({ bytes: payload, codec, hasher });
+        // TypeScript-safe cast: we know payload is Uint8Array
+        await Block.decode({
+          bytes: payload as Uint8Array,
+          codec,
+          hasher,
+        });
       } catch (e: any) {
         error = e;
       }

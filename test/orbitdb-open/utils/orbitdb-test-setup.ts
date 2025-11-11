@@ -1,7 +1,7 @@
 // test/orbitdb-open/utils/orbitdb-test-setup.ts
 import { rimraf } from "rimraf";
 import createHelia from "../../utils/create-helia.js";
-import { createOrbitDB } from "../../../src/index.js";
+import { createOrbitDB } from "../../../src";
 import connectPeers from "../../utils/connect-nodes.js";
 
 export async function setupTwoNodes() {

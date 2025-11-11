@@ -151,16 +151,25 @@ const KeyStore = async ({
   // Cache for private keys
   const keyCache: StorageBackend = await LRUStorage({ size: 1000 });
 
+  /**
+   * Closes the KeyStore's underlying storage.
+   */
   const close = async () => {
     await resolvedStorage.close();
     await keyCache.close();
   };
 
+  /**
+   * Clears the KeyStore's underlying storage.
+   */
   const clear = async () => {
     await resolvedStorage.clear();
     await keyCache.clear();
   };
 
+  /**
+   * Checks if a key exists in the key store .
+   */
   const hasKey = async (id: string) => {
     if (await keyCache.get(id)) return true;
     try {
@@ -171,18 +180,30 @@ const KeyStore = async ({
     }
   };
 
+  /**
+   * Adds a private key to the keystore.
+   */
   const addKey = async (id: string, key: { privateKey: Uint8Array }) => {
     await resolvedStorage.put(`private_${id}`, key.privateKey);
     const unmarshaledKey = privateKeyFromRaw(key.privateKey);
     await keyCache.put(id, unmarshaledKey);
   };
 
+  /**
+   * Creates a key pair and stores it to the keystore.
+   */
   const createKey = async (id: string) => {
+    if (!id) {
+      throw new Error("id needed to create a key");
+    }
     const key: PrivateKey = await generateKeyPair("secp256k1");
     await addKey(id, { privateKey: key.raw });
     return key;
   };
 
+  /**
+   * Gets a key from keystore.
+   */
   const getKey = async (id: string) => {
     let key: PrivateKey | undefined = (await keyCache.get(id)) as
       | PrivateKey
@@ -198,6 +219,9 @@ const KeyStore = async ({
     return key;
   };
 
+  /**
+   * Gets the serialized public key from a key pair.
+   */
   const getPublic = (key: PrivateKey, format: "hex" | "buffer" = "hex") => {
     const pubKey = key.publicKey.raw;
     return format === "hex" ? uint8ArrayToString(pubKey, "base16") : pubKey;
@@ -206,5 +230,5 @@ const KeyStore = async ({
   return { clear, close, hasKey, addKey, createKey, getKey, getPublic };
 };
 
-export type KeyStoreType = ReturnType<typeof KeyStore>;
+export type KeyStoreType = KeyStoreInstance;
 export default KeyStore;

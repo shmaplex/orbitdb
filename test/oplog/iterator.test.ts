@@ -1,18 +1,25 @@
+// test/oplog/iterator.test.ts
 import all from "it-all";
 import { rimraf } from "rimraf";
 import { copy } from "fs-extra";
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
-import { Log, Identities, KeyStore } from "../../src/index.js";
-import LogCreator from "./utils/log-creator.js";
-import testKeysPath from "../fixtures/test-keys-path.js";
+import { Log, Identities, KeyStore } from "../../src";
+import type { EntryType } from "../../src/oplog/entry";
+import type { IdentitiesInstance, IdentityType } from "../../src/identities";
+import LogCreator from "./utils/log-creator";
+import testKeysPath from "../fixtures/test-keys-path";
 
 const { createLogWithSixteenEntries } = LogCreator;
 const keysPath = "./testkeys";
 
 describe("Log - Iterator", () => {
-  let keystore: any;
-  let identities1: any, identities2: any, identities3: any;
-  let testIdentity: any, testIdentity2: any, testIdentity3: any;
+  let keystore: Awaited<ReturnType<typeof KeyStore>>;
+  let identities1: IdentitiesInstance;
+  let identities2: IdentitiesInstance;
+  let identities3: IdentitiesInstance;
+  let testIdentity: IdentityType;
+  let testIdentity2: IdentityType;
+  let testIdentity3: IdentityType;
 
   beforeAll(async () => {
     await copy(testKeysPath, keysPath);
@@ -31,7 +38,7 @@ describe("Log - Iterator", () => {
   });
 
   describe("Basic iterator functionality", () => {
-    let log1: any;
+    let log1: Awaited<ReturnType<typeof Log>>;
     let startHash: string;
     const hashes: [string, number][] = [];
     const logSize = 100;
@@ -39,21 +46,25 @@ describe("Log - Iterator", () => {
 
     beforeEach(async () => {
       log1 = await Log(testIdentity, { logId: "X" });
+      hashes.length = 0;
 
       for (let i = 0; i < logSize; i++) {
-        const entry = await log1.append("entry" + i);
+        const entry: EntryType = await log1.append("entry" + i);
+        if (!entry.hash) throw new Error("Entry hash is undefined");
         hashes.push([entry.hash, hashes.length]);
       }
 
-      startHash = hashes[startIndex][0];
+      const startHashCandidate = hashes[startIndex][0];
+      if (!startHashCandidate) throw new Error("Start hash is undefined");
+      startHash = startHashCandidate;
       expect(startHash).toBe(hashes[startIndex][0]);
     });
 
     it("returns length with lte and amount", async () => {
       const amount = 10;
       const it = log1.iterator({ lte: startHash, amount });
-      const result = await all(it);
-      expect(result.length).toBe(10);
+      const result: EntryType[] = await all(it);
+      expect(result.length).toBe(amount);
       expect(result[0].hash).toBe(startHash);
     });
 
@@ -70,7 +81,7 @@ describe("Log - Iterator", () => {
     it("returns length with lt and amount", async () => {
       const amount = 10;
       const it = log1.iterator({ lt: startHash, amount });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(amount);
     });
 
@@ -97,7 +108,7 @@ describe("Log - Iterator", () => {
     it("returns length with gte and amount", async () => {
       const amount = 12;
       const it = log1.iterator({ gte: startHash, amount });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(amount);
       expect(result[result.length - 1].hash).toBe(startHash);
     });
@@ -118,7 +129,7 @@ describe("Log - Iterator", () => {
         gt: expectedHashes[0],
         lt: expectedHashes[expectedHashes.length - 1],
       });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       const hashes_ = result.reverse().map((e) => e.hash);
       expect(hashes_.length).toBe(10);
       for (let i = 0; i < hashes_.length; i++) {
@@ -132,7 +143,7 @@ describe("Log - Iterator", () => {
         gte: expectedHashes[0],
         lt: expectedHashes[expectedHashes.length - 1],
       });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       const hashes_ = result.map((e) => e.hash);
       expect(hashes_.length).toBe(25);
       expect(hashes_.indexOf(expectedHashes[0])).toBe(24);
@@ -153,7 +164,7 @@ describe("Log - Iterator", () => {
         gt: expectedHashes[0],
         lte: expectedHashes[expectedHashes.length - 1],
       });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       const hashes_ = result.map((e) => e.hash);
       expect(hashes_.length).toBe(4);
       expect(hashes_.indexOf(expectedHashes[0])).toBe(-1);
@@ -177,7 +188,7 @@ describe("Log - Iterator", () => {
         gte: expectedHashes[0],
         lte: expectedHashes[expectedHashes.length - 1],
       });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       const hashes_ = result.map((e) => e.hash);
       expect(hashes_.length).toBe(10);
       expect(hashes_.indexOf(expectedHashes[0])).toBe(9);
@@ -192,7 +203,7 @@ describe("Log - Iterator", () => {
     it("iterates the full log by default", async () => {
       const expectedHashes = hashes.map((e) => e[0]);
       const it = log1.iterator({});
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       const hashes_ = result.map((e) => e.hash);
       expect(hashes_.length).toBe(logSize);
       for (let i = 0; i < hashes_.length; i++) {
@@ -207,7 +218,7 @@ describe("Log - Iterator", () => {
         lte: expectedHashes[expectedHashes.length - 1],
         amount: logSize,
       });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       const hashes_ = result.map((e) => e.hash);
       expect(hashes_.length).toBe(logSize);
       for (let i = 0; i < hashes_.length; i++) {
@@ -217,7 +228,7 @@ describe("Log - Iterator", () => {
 
     it("returns length with gt and default amount", async () => {
       const it = log1.iterator({ gt: startHash });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(32);
     });
 
@@ -232,7 +243,7 @@ describe("Log - Iterator", () => {
 
     it("returns length with gte and default amount", async () => {
       const it = log1.iterator({ gte: startHash });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(33);
     });
 
@@ -247,7 +258,7 @@ describe("Log - Iterator", () => {
 
     it("returns length with lt and default amount value", async () => {
       const it = log1.iterator({ lt: startHash });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(67);
     });
 
@@ -262,7 +273,7 @@ describe("Log - Iterator", () => {
 
     it("returns length with lte and default amount value", async () => {
       const it = log1.iterator({ lte: startHash });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(68);
     });
 
@@ -308,23 +319,29 @@ describe("Log - Iterator", () => {
   });
 
   describe("Iteration over forked/joined logs", () => {
-    let fixture: any, identities: any[], heads: any[];
+    let fixture: Awaited<ReturnType<typeof createLogWithSixteenEntries>>;
+    let identities: IdentityType[];
+    let heads: EntryType[];
 
     beforeAll(async () => {
       identities = [testIdentity3, testIdentity2, testIdentity3, testIdentity];
-      fixture = await createLogWithSixteenEntries(Log, null, identities);
+      fixture = await createLogWithSixteenEntries(
+        Log as any,
+        null as any,
+        identities
+      );
       heads = await fixture.log.heads();
     });
 
     it("returns the full length from all heads", async () => {
       const it = fixture.log.iterator({ lte: heads });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(16);
     });
 
     it("returns partial entries from all heads", async () => {
       const it = fixture.log.iterator({ lte: heads, amount: 6 });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.map((e) => e.payload)).toEqual([
         "entryA10",
         "entryA9",
@@ -337,13 +354,13 @@ describe("Log - Iterator", () => {
 
     it("returns partial logs from single heads #1", async () => {
       const it = fixture.log.iterator({ lte: [heads[0]] });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(10);
     });
 
     it("returns partial logs from single heads #2", async () => {
       const it = fixture.log.iterator({ lte: [heads[1]] });
-      const result = await all(it);
+      const result: EntryType[] = await all(it);
       expect(result.length).toBe(11);
     });
 

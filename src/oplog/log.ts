@@ -1,9 +1,10 @@
 import PQueue from "p-queue";
 import type { AccessControllerInstance as AccessController } from "../access-controllers";
+import type { IdentityType } from "../identities";
 import type { StorageBackend } from "../storage";
 import Clock, { tickClock } from "./clock";
 import ConflictResolution from "./conflict-resolution";
-import Entry, { type Entry as EntryType } from "./entry";
+import Entry, { type EntryType } from "./entry";
 import OplogStore, { type OplogStoreInstance } from "./oplog-store";
 
 const { LastWriteWins, NoZeroes } = ConflictResolution;
@@ -41,7 +42,8 @@ export interface LogOptions {
   entryStorage?: StorageBackend;
   headsStorage?: StorageBackend;
   indexStorage?: StorageBackend;
-  sortFn?: (a: EntryType, b: EntryType) => number;
+  entries?: EntryType[];
+  sortFn?: (a: number | EntryType, b: number | EntryType) => number;
   encryption?: Encryption;
 }
 
@@ -73,7 +75,7 @@ export interface LogInstance {
   clear: () => Promise<void>;
   close: () => Promise<void>;
   access: AccessController;
-  identity: any;
+  identity: IdentityType;
   storage: OplogStoreInstance & StorageBackend;
   encryption: Encryption;
 }
@@ -96,8 +98,8 @@ const DefaultAccessController: () => Promise<AccessController> = async () => ({
  * @param options Log options
  * @returns LogInstance
  */
-const Log = async (
-  identity: any,
+export const Log = async (
+  identity?: IdentityType,
   options: LogOptions = {}
 ): Promise<LogInstance> => {
   const {
@@ -128,7 +130,12 @@ const Log = async (
     encryption,
   });
 
-  const sortFn = NoZeroes(_sortFn || LastWriteWins);
+  const sortFn = NoZeroes(
+    (_sortFn || LastWriteWins) as (
+      a: number | EntryType,
+      b: number | EntryType
+    ) => number
+  );
   const appendQueue = new PQueue({ concurrency: 1 });
   const joinQueue = new PQueue({ concurrency: 1 });
 
@@ -466,5 +473,6 @@ const Log = async (
   };
 };
 
-export { Log as default, DefaultAccessController, Clock };
+export { DefaultAccessController, Clock };
 export type LogEntry = EntryType;
+export default Log;

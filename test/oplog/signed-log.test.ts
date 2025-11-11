@@ -1,13 +1,13 @@
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { rimraf } from "rimraf";
 import { copy } from "fs-extra";
-import { Log, Identities, KeyStore } from "../../src/index.js";
+import { Log, Identities, KeyStore, KeyStoreType } from "../../src/index.js";
 import testKeysPath from "../fixtures/test-keys-path.js";
 
 const keysPath = "./testkeys";
 
 describe("Signed Log", () => {
-  let keystore: KeyStore;
+  let keystore: KeyStoreType;
   let identities: any;
   let testIdentity1: any, testIdentity2: any;
 
@@ -70,7 +70,7 @@ describe("Signed Log", () => {
   it("doesn't sign entries when identity is not defined", async () => {
     let err;
     try {
-      await Log(null);
+      await Log(null as any);
     } catch (e: any) {
       err = e;
     }
@@ -135,7 +135,10 @@ describe("Signed Log", () => {
   it("throws an error if entry doesn't have append access", async () => {
     const denyAccess = { canAppend: () => false };
     const log1 = await Log(testIdentity1, { logId: "A" });
-    const log2 = await Log(testIdentity2, { logId: "A", access: denyAccess });
+    const log2 = await Log(testIdentity2, {
+      logId: "A",
+      access: denyAccess as any,
+    });
 
     let err;
     try {

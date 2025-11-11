@@ -1,3 +1,4 @@
+import type { IPFS } from "ipfs-core-types";
 import type { KeyStoreInstance } from "../key-store";
 import KeyStore, { signMessage, verifyMessage } from "../key-store";
 import {
@@ -5,6 +6,7 @@ import {
   IPFSBlockStorage,
   LRUStorage,
   MemoryStorage,
+  type StorageBackend,
 } from "../storage";
 import { join as pathJoin } from "../utils";
 import Identity, {
@@ -44,8 +46,8 @@ const Identities = async ({
 }: {
   keystore?: KeyStoreInstance;
   path?: string;
-  storage?: any;
-  ipfs?: any;
+  storage?: StorageBackend;
+  ipfs?: IPFS;
 } = {}): Promise<IdentitiesInstance> => {
   keystore =
     keystore || (await KeyStore({ path: path || DefaultIdentityKeysPath }));
@@ -67,13 +69,11 @@ const Identities = async ({
     const bytes = await storage.get(hash);
     if (!bytes) return undefined;
 
-    const identity = await decodeIdentity(
+    return decodeIdentity(
       bytes,
-      async (data) => data,
-      async () => true
+      async (...args: any[]) => args[0], // generic sign passthrough
+      async (...args: any[]) => true // generic verify passthrough
     );
-
-    return identity;
   };
 
   const createIdentity = async (
@@ -91,20 +91,38 @@ const Identities = async ({
       );
     }
 
-    const id = await identityProvider.getId(options);
+    if (!identityProvider.getId) {
+      throw new Error(
+        `Identity provider ${identityProvider.type} is missing required method 'getId'`
+      );
+    }
+
+    const id = await identityProvider.getId({
+      ...options,
+      keystore,
+    });
+
     const privateKey =
       (await keystore.getKey(id)) || (await keystore.createKey(id));
     const publicKeyHex = keystore.getPublic(privateKey, "hex") as string;
     const publicKey = { raw: publicKeyHex };
+
+    if (!identityProvider.signIdentity) {
+      throw new Error(
+        `Identity provider ${identityProvider.type} is missing required method 'signIdentity'`
+      );
+    }
 
     const idSignature = await signMessage(privateKey, id);
     const publicKeyAndIdSignature = await identityProvider.signIdentity(
       publicKeyHex + idSignature,
       { id }
     );
+
     const signatures = { id: idSignature, publicKey: publicKeyAndIdSignature };
 
-    const signWrapper = async (data: Uint8Array): Promise<Uint8Array> => {
+    const signWrapper = async (...args: any[]): Promise<any> => {
+      const data: Uint8Array = args[0];
       const sigHex = await signMessage(
         privateKey,
         Buffer.from(data).toString("hex")
@@ -112,10 +130,8 @@ const Identities = async ({
       return Uint8Array.from(Buffer.from(sigHex, "hex"));
     };
 
-    const verifyWrapper = async (
-      data: Uint8Array,
-      signature: Uint8Array
-    ): Promise<boolean> => {
+    const verifyWrapper = async (...args: any[]): Promise<boolean> => {
+      const [data, signature] = args as [Uint8Array, Uint8Array];
       const sigHex = Buffer.from(signature).toString("hex");
       return verifyMessage(
         sigHex,
@@ -146,7 +162,7 @@ const Identities = async ({
     const { id, publicKey, signatures } = identity;
     const idSignatureVerified = await verifyMessage(
       signatures.id as string,
-      publicKey.raw,
+      publicKey,
       id
     );
     if (!idSignatureVerified) return false;
@@ -154,31 +170,28 @@ const Identities = async ({
     const cachedIdentity = await verifiedIdentitiesCache.get(
       signatures.id as string
     );
-    if (cachedIdentity && isIdentity(cachedIdentity))
+    if (cachedIdentity && isIdentity(cachedIdentity)) {
       return isEqual(identity, cachedIdentity);
+    }
 
     const Provider = getIdentityProvider(identity.type);
     const identityVerified = await Provider.verifyIdentity(identity);
-    if (identityVerified)
+    if (identityVerified) {
       await verifiedIdentitiesCache.put(signatures.id as string, identity);
+    }
 
     return identityVerified;
   };
 
-  const sign = async (
-    identity: IdentityType,
-    data: string
-  ): Promise<string> => {
+  const sign = async (...args: any[]): Promise<any> => {
+    const [identity, data] = args as [IdentityType, string];
     const key = await keystore.getKey(identity.id);
     if (!key) throw new Error("Private signing key not found from KeyStore");
     return signMessage(key, data);
   };
 
-  const verify = async (
-    signature: string,
-    publicKey: string,
-    data: string
-  ): Promise<boolean> => {
+  const verify = async (...args: any[]): Promise<boolean> => {
+    const [signature, publicKey, data] = args as [string, string, string];
     return verifyMessage(signature, publicKey, data);
   };
 

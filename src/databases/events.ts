@@ -1,10 +1,11 @@
 import type { IPFS } from "ipfs-core-types";
 import Database, {
   type DatabaseInstance,
-  DatabaseType,
+  type DatabaseType,
   type Encryption,
 } from "../database";
-import type { IdentitiesInstance } from "../identities";
+import type { IdentityType } from "../identities";
+import { StorageBackend } from "../storage";
 
 const type = "events";
 
@@ -13,15 +14,15 @@ const type = "events";
  */
 export interface EventsContext {
   ipfs: IPFS;
-  identity?: IdentitiesInstance;
+  identity?: IdentityType;
   address: string;
   name?: string;
   access?: any;
   directory?: string;
   meta?: Record<string, any>;
-  headsStorage?: any;
-  entryStorage?: any;
-  indexStorage?: any;
+  headsStorage?: StorageBackend;
+  entryStorage?: StorageBackend;
+  indexStorage?: StorageBackend;
   referencesCount?: number;
   syncAutomatically?: boolean;
   onUpdate?: (value: any) => void;

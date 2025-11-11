@@ -10,7 +10,7 @@ import type { Helia } from "helia";
 import type { IPFS } from "ipfs-core-types";
 import PQueue from "p-queue";
 import type { OrbitDBAccessControllerInstance } from "./access-controllers";
-import type { IdentitiesInstance } from "./identities/identities";
+import type { IdentityType } from "./identities";
 import { type EntryType, Log, type LogType } from "./oplog";
 import type { StorageBackend } from "./storage";
 import {
@@ -41,7 +41,7 @@ export type AccessControllerInput =
 // Accept either IPFS or Helia-like nodes
 export interface DatabaseContext {
   ipfs: IPFS | Helia;
-  identity?: IdentitiesInstance;
+  identity?: IdentityType;
   address: string;
   name?: string;
   access?: AccessControllerInput;
@@ -60,7 +60,7 @@ export interface DatabaseInstance {
   address: string;
   name?: string;
   type?: string;
-  identity?: IdentitiesInstance;
+  identity?: IdentityType;
   meta: Record<string, any>;
   close: () => Promise<void>;
   drop: () => Promise<void>;

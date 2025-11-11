@@ -3,6 +3,7 @@ import { base58btc } from "multiformats/bases/base58";
 import * as Block from "multiformats/block";
 import type { CID } from "multiformats/cid";
 import { sha256 } from "multiformats/hashes/sha2";
+import type { IdentityType } from "../identities";
 import Clock, { type ClockType } from "./clock";
 
 const codec = dagCbor;
@@ -12,11 +13,11 @@ const hashStringEncoding = base58btc;
 /** Represents a log entry */
 export interface EntryType {
   id?: string;
-  payload?: unknown;
-  next: string[];
-  refs: string[];
-  clock: ClockType;
-  v: number;
+  payload?: Uint8Array | unknown;
+  next?: string[];
+  refs?: string[];
+  clock?: ClockType;
+  v?: number;
   key?: string;
   identity?: string;
   sig?: string;
@@ -37,20 +38,55 @@ export type EncryptFn = (data: Uint8Array) => Promise<Uint8Array>;
 export type DecryptFn = (data: Uint8Array) => Promise<Uint8Array>;
 
 /**
- * Creates a new log entry.
+ * Creates an Entry.
+ * @param {module:Identities~Identity} identity The identity instance
+ * @param {string} logId The unique identifier for this log
+ * @param {*} data Data of the entry to be added. Can be any JSON.stringifyable
+ * data.
+ * @param {module:Log~Clock} [clock] The clock
+ * @param {Array<string|Entry>} [next=[]] An array of CIDs as base58btc encoded
+ * strings which point to the next entries in a chain of entries.
+ * @param {Array<string|module:Log~Entry>} [refs=[]] An array of CIDs as
+ * base58btc encoded strings pointing to various entries which come before
+ * this entry.
+ * @return {Promise<module:Log~Entry>} A promise which contains an instance of
+ * Entry.
+ * Entry consists of the following properties:
+ *
+ * - id: A string linking multiple entries together,
+ * - payload: An arbitrary chunk of data,
+ * - next: One or more hashes pointing to the next entries in a chain of
+ * entries,
+ * - refs: One or more hashes which reference other entries in the chain,
+ * - clock: A logical clock. See {@link module:Log~Clock},
+ * - v: The version of the entry,
+ * - key: The public key of the identity,
+ * - identity: The identity of the entry's owner,
+ * - sig: The signature of the entry signed by the owner.
+ * @memberof module:Log~Entry
+ * @example
+ * const entry = await Entry.create(identity, 'log1', 'hello')
+ * console.log(entry)
+ * // { payload: "hello", next: [], ... }
+ * @private
  */
 export const create = async (
-  identity: Identity,
+  identity: IdentityType,
   id: string | null,
   payload: unknown,
-  encryptPayloadFn?: EncryptFn,
+  encryptPayloadFn?: EncryptFn | null,
   clock: ClockType | null = null,
   next: Array<string | EntryType> = [],
   refs: Array<string | EntryType> = []
 ): Promise<EntryType> => {
-  if (!identity) throw new Error("Identity is required");
+  // === Error validation order must match the tests ===
+  if (!identity) throw new Error("Identity is required, cannot create entry");
   if (!id) throw new Error("Entry requires an id");
   if (payload == null) throw new Error("Entry requires a payload");
+
+  // === Validate `next` explicitly ===
+  if (!Array.isArray(next)) throw new Error("'next' argument is not an array");
+  if (!Array.isArray(refs)) throw new Error("'refs' argument is not an array");
 
   const entryClock = clock ?? Clock(identity.publicKey);
 
@@ -65,20 +101,20 @@ export const create = async (
   }
 
   const entry: EntryType = {
-    id, // For determining a unique chain
-    payload: encryptedPayload ?? payload, // Can be any dag-cbor encodeable data
+    id,
+    payload: encryptedPayload ?? payload,
     next: next.map((n) => {
       if (typeof n === "string") return n;
       if (!n.hash) throw new Error("Next entry missing hash");
       return n.hash;
-    }), // Array of strings of CIDs
+    }),
     refs: refs.map((r) => {
       if (typeof r === "string") return r;
       if (!r.hash) throw new Error("Ref entry missing hash");
       return r.hash;
-    }), // Array of strings of CIDs
+    }),
     clock: entryClock,
-    v: 2, // To tag the version of this data structure
+    v: 2,
     key: "",
     identity: "",
     sig: "",
@@ -90,19 +126,16 @@ export const create = async (
     hasher,
   });
 
-  // Sign the entry bytes
+  // Sign entry bytes
   const signature = await identity.sign(identity, bytes);
 
-  // Populate signature and identity info
   entry.key = identity.publicKey;
   entry.identity = identity.hash;
   entry.sig = signature;
 
-  // If encrypted payload exists, keep it in _payload
+  // Keep encrypted payload if needed
   if (encryptPayloadFn) entry._payload = encryptedPayload;
-
-  // Restore the original payload for convenience
-  entry.payload = payload;
+  entry.payload = payload; // restore for convenience
 
   return entry;
 };
@@ -124,9 +157,7 @@ export const isEqual = (a: EntryType, b: EntryType): boolean =>
 
 /** Verifies an entry signature */
 export const verify = async (
-  identities: {
-    verify(sig: string, key: string, bytes: Uint8Array): Promise<boolean>;
-  },
+  identities: IdentityType,
   entry: EntryType
 ): Promise<boolean> => {
   if (!identities) throw new Error("Identities is required");
