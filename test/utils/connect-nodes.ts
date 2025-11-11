@@ -1,6 +1,6 @@
 import { multiaddr, Multiaddr as MultiaddrType } from "@multiformats/multiaddr";
 import { WebRTC } from "@multiformats/multiaddr-matcher";
-import waitFor from "./wait-for.js";
+import waitFor from "./wait-for";
 import type { Libp2p } from "libp2p";
 import type { Helia as HeliaOriginal } from "helia";
 

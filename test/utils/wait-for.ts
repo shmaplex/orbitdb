@@ -4,10 +4,10 @@
  * Polls a function until its return value equals the expected value.
  *
  * @template T
- * @param {() => Promise<T> | T} valueA - An async or sync function returning the current value.
- * @param {() => Promise<T> | T} toBeValueB - An async or sync function returning the expected value.
- * @param {number} [pollInterval=100] - Interval in milliseconds between polls.
- * @returns {Promise<void>} Resolves when `valueA()` equals `toBeValueB()`.
+ * @param valueA - An async or sync function returning the current value.
+ * @param toBeValueB - An async or sync function returning the expected value.
+ * @param pollInterval - Interval in milliseconds between polls (default 100ms).
+ * @returns Resolves when `valueA()` equals `toBeValueB()`.
  */
 const waitFor = async <T>(
   valueA: () => Promise<T> | T,
@@ -15,7 +15,7 @@ const waitFor = async <T>(
   pollInterval = 100
 ): Promise<void> => {
   return new Promise((resolve) => {
-    const interval = setInterval(async () => {
+    const interval: ReturnType<typeof setInterval> = setInterval(async () => {
       try {
         const currentValue = await valueA();
         const expectedValue = await toBeValueB();
