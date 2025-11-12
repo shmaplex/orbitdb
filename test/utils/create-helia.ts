@@ -12,7 +12,7 @@ import { gossipsub } from "@chainsafe/libp2p-gossipsub";
 import { circuitRelayTransport } from "@libp2p/circuit-relay-v2";
 
 /** Checks if the current environment is a browser. */
-const isBrowser = (): boolean => typeof window !== "undefined";
+const isBrowser: () => boolean = () => typeof window !== "undefined";
 
 /** Libp2p configuration for Node.js */
 const libp2pNodeConfig = {

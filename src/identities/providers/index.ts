@@ -1,6 +1,6 @@
-import type { KeyStoreType } from "../../key-store.js";
-import type { IdentityType } from "../identity.js";
-import PublicKeyIdentityProvider from "./publickey.js";
+import type { KeyStoreType } from "../../key-store";
+import type { IdentityType } from "../identity";
+import PublicKeyIdentityProvider from "./publickey";
 
 export interface IdentityProviderOptions {
   keystore?: KeyStoreType;

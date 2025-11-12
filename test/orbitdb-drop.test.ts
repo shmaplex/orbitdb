@@ -1,7 +1,7 @@
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { rimraf } from "rimraf";
-import { createOrbitDB } from "../src/index.js";
-import createHelia from "./utils/create-helia.js";
+import { createOrbitDB } from "../src";
+import createHelia from "./utils/create-helia";
 
 /**
  * @file Drop Databases Test Suite

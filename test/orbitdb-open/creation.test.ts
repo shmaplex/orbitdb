@@ -1,12 +1,12 @@
 import { strictEqual, notStrictEqual } from "assert";
 import fs from "fs";
 import path from "path";
-import { isValidAddress } from "../../src/index.js";
+import { isValidAddress } from "../../src";
 import {
   setupTwoNodes,
   teardownTwoNodes,
   createDB,
-} from "./utils/orbitdb-test-setup.js";
+} from "./utils/orbitdb-test-setup";
 import { describe, it, beforeAll, afterAll } from "vitest";
 
 describe("Database Creation", () => {

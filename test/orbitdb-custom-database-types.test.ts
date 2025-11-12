@@ -1,15 +1,15 @@
 import { describe, it, beforeAll, expect, afterAll, beforeEach } from "vitest";
 import { rimraf } from "rimraf";
 import { existsSync } from "fs";
-import { getDatabaseType } from "../src/databases/index.js";
+import { getDatabaseType } from "../src/databases";
 import {
   createOrbitDB,
   useDatabaseType,
   Database,
   KeyValueIndexed,
-} from "../src/index.js";
-import pathJoin from "../src/utils/path-join.js";
-import createHelia from "./utils/create-helia.js";
+} from "../src";
+import pathJoin from "../src/utils/path-join";
+import createHelia from "./utils/create-helia";
 
 /**
  * @file Custom Database Type Test Suite
@@ -28,7 +28,7 @@ const CustomStore =
     identity,
     address,
     name,
-    access,
+    accessController,
     directory,
     meta,
     headsStorage,
@@ -43,7 +43,7 @@ const CustomStore =
       identity,
       address,
       name,
-      access,
+      accessController,
       directory,
       meta,
       headsStorage,

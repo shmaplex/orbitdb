@@ -48,3 +48,15 @@ export {
   KeyValue,
   KeyValueIndexed,
 };
+export type {
+  DocumentEntry,
+  DocumentsInstance,
+  DocumentsOptions,
+} from "./documents";
+export type { EventEntry, EventsContext, EventsInstance } from "./events";
+export type { IndexedEntry, IndexInstance } from "./indexed";
+export type { KeyValueEntry, KeyValueInstance } from "./keyvalue";
+export type {
+  KeyValueIndexedContext,
+  KeyValueIndexedInstance,
+} from "./keyvalue-indexed";

@@ -1,6 +1,6 @@
 import { describe, it, beforeAll, beforeEach, expect } from "vitest";
-import { Identity, isIdentity, isEqual } from "../../src/identities/index.js";
-import { decodeIdentity } from "../../src/identities/identity.js";
+import { Identity, isIdentity, isEqual } from "../../src/identities";
+import { decodeIdentity } from "../../src/identities/identity";
 
 describe("Identity", () => {
   const id = "0x01234567890abcdefghijklmnopqrstuvwxyz";

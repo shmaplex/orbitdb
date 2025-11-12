@@ -9,10 +9,7 @@ import type { IPFS } from "ipfs-core-types";
 import { base58btc } from "multiformats/bases/base58";
 import * as Block from "multiformats/block";
 import { sha256 } from "multiformats/hashes/sha2";
-import {
-  type AccessControllerType,
-  getAccessController,
-} from "./access-controllers";
+import { getAccessController } from "./access-controllers";
 import type { StorageBackend } from "./storage";
 import { ComposedStorage, IPFSBlockStorage, LRUStorage } from "./storage";
 import { decodeBlock } from "./utils/decode-block";
@@ -24,7 +21,7 @@ const hashStringEncoding = base58btc;
 export interface ManifestParams {
   name: string;
   type: string;
-  accessController: AccessControllerType;
+  accessController: string;
   meta?: any;
 }
 

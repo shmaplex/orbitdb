@@ -1,4 +1,4 @@
-import type { IPFS } from "ipfs-core-types";
+import type { Helia } from "node_modules/helia/dist/src";
 import {
   type AccessControllerInstance as ACInstance,
   getAccessController,
@@ -53,7 +53,7 @@ export interface OrbitDBInstance {
     params?: OpenDatabaseOptions
   ): Promise<DatabaseInstance>;
   stop(): Promise<void>;
-  ipfs: IPFS;
+  ipfs: Helia;
   directory: string;
   keystore: KeyStoreInstance;
   identities: IdentitiesInstance;
@@ -68,7 +68,7 @@ const OrbitDB = async ({
   identities,
   directory,
 }: {
-  ipfs: IPFS;
+  ipfs: Helia;
   id?: string;
   identity?: Partial<IdentityType> & { provider?: unknown };
   identities?: IdentitiesInstance;
@@ -76,7 +76,7 @@ const OrbitDB = async ({
 }): Promise<OrbitDBInstance> => {
   if (!ipfs) throw new Error("IPFS instance is required");
 
-  const peerId = (ipfs as any).libp2p?.peerId;
+  const peerId = (ipfs as Helia).libp2p?.peerId;
   const dbId = id || (await createId());
   const dir = directory || "./orbitdb";
 

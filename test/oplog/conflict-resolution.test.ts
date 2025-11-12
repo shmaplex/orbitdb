@@ -1,7 +1,7 @@
 import { strictEqual, deepStrictEqual } from "assert";
 import { describe, it, beforeAll } from "vitest";
-import Clock from "../../src/oplog/clock.js";
-import ConflictResolution from "../../src/oplog/conflict-resolution.js";
+import Clock from "../../src/oplog/clock";
+import ConflictResolution from "../../src/oplog/conflict-resolution";
 
 describe("ConflictResolution", () => {
   describe("NoZeroes", () => {

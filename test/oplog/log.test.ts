@@ -10,8 +10,8 @@ import {
   KeyStoreType,
   IdentitiesInstance,
   EntryType,
-} from "../../src/index.js";
-import testKeysPath from "../fixtures/test-keys-path.js";
+} from "../../src";
+import testKeysPath from "../fixtures/test-keys-path";
 
 const { create } = Entry;
 const keysPath = "./testkeys";

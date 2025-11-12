@@ -7,17 +7,17 @@ import Database from "../database";
 
 const type = "documents";
 
-interface DocumentEntry<T = any> {
+export interface DocumentEntry<T = any> {
   hash: string;
   key: string;
   value: T;
 }
 
-interface DocumentsOptions {
+export interface DocumentsOptions {
   indexBy?: string;
 }
 
-interface DocumentsInstance<T = any> extends DatabaseInstance {
+export interface DocumentsInstance<T = any> extends DatabaseInstance {
   type: string;
   indexBy: string;
   put: (doc: T) => Promise<string>;
@@ -28,7 +28,7 @@ interface DocumentsInstance<T = any> extends DatabaseInstance {
   all: () => Promise<DocumentEntry<T>[]>;
 }
 
-interface LogPayload<T = any> {
+export interface LogPayload<T = any> {
   op: "PUT" | "DEL";
   key: string;
   value: T | null;

@@ -7,9 +7,9 @@ import {
   createLog,
   keysPath,
 } from "./helpers";
-import Sync from "../../src/sync.js";
-import connectPeers from "../utils/connect-nodes.js";
-import waitFor from "../utils/wait-for.js";
+import Sync from "../../src/sync";
+import connectPeers from "../utils/connect-nodes";
+import waitFor from "../utils/wait-for";
 
 let ipfs1: any;
 let ipfs2: any;

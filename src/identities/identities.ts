@@ -1,4 +1,4 @@
-import type { IPFS } from "ipfs-core-types";
+import type { Helia } from "node_modules/helia/dist/src";
 import type { KeyStoreInstance } from "../key-store";
 import KeyStore, { signMessage, verifyMessage } from "../key-store";
 import {
@@ -47,7 +47,7 @@ const Identities = async ({
   keystore?: KeyStoreInstance;
   path?: string;
   storage?: StorageBackend;
-  ipfs?: IPFS;
+  ipfs?: Helia;
 } = {}): Promise<IdentitiesInstance> => {
   keystore =
     keystore || (await KeyStore({ path: path || DefaultIdentityKeysPath }));

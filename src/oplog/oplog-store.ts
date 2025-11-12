@@ -1,7 +1,7 @@
 // src/oplog/oplog-store.ts
 import type { StorageBackend } from "../storage";
 import { MemoryStorage } from "../storage";
-import Entry, { type Entry as EntryType } from "./entry";
+import Entry, { type EntryType } from "./entry";
 import Heads, { type HeadsOptions } from "./heads";
 
 export type EncryptFn = (data: Uint8Array) => Promise<Uint8Array>;

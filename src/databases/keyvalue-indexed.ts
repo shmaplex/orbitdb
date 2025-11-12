@@ -1,36 +1,28 @@
 // src/databases/keyvalue-indexed.ts
-import type { IPFS } from "ipfs-core-types";
-import type {
-  DatabaseContext,
-  DatabaseInstance,
-  DatabaseType,
-} from "../database";
+import type { Helia } from "helia";
+import type { DatabaseContext, DatabaseType } from "../database";
 import pathJoin from "../utils/path-join";
 import { Index, type IndexedEntry } from "./indexed";
-import KeyValue from "./keyvalue";
+import KeyValue, { type KeyValueInstance } from "./keyvalue";
 
 const type = "keyvalue-indexed";
 
 /**
  * KeyValueIndexed Instance Interface
  */
-export interface KeyValueIndexedInstance extends DatabaseInstance {
-  type: string;
-  get: (key: string) => Promise<any>;
+export interface KeyValueIndexedInstance extends KeyValueInstance {
   iterator: (filters?: {
     amount?: number;
     reverse?: boolean;
-  }) => AsyncGenerator<[string, IndexedEntry]>;
-  close: () => Promise<void>;
-  drop: () => Promise<void>;
+  }) => AsyncGenerator<{ key: string; value: any; hash: string }>;
   update?: (log: any, entry: any) => Promise<void>;
 }
 
 /**
- * KeyValueIndexed Context
+ * KeyValueIndexed Context (Helia-specific)
  */
-export interface KeyValueIndexedContext extends DatabaseContext {
-  ipfs: IPFS;
+export interface KeyValueIndexedContext extends Omit<DatabaseContext, "ipfs"> {
+  ipfs: Helia;
   identity?: any;
   address: string;
   name?: string;
@@ -38,11 +30,15 @@ export interface KeyValueIndexedContext extends DatabaseContext {
 
 /**
  * Factory: KeyValueIndexed Database
+ *
+ * Note: We keep the generic DatabaseType parameter as DatabaseContext so it’s compatible,
+ * but internally we assert that context is KeyValueIndexedContext.
  */
-const KeyValueIndexed: DatabaseType =
+const KeyValueIndexed: DatabaseType<KeyValueIndexedInstance> =
   () =>
-  async (context: KeyValueIndexedContext): Promise<KeyValueIndexedInstance> => {
-    const { directory, address } = context;
+  async (context: DatabaseContext): Promise<KeyValueIndexedInstance> => {
+    // Assert context is Helia-based
+    const { directory, address } = context as KeyValueIndexedContext;
 
     // Construct the index directory path safely
     const finalDirectory = pathJoin(
@@ -54,7 +50,7 @@ const KeyValueIndexed: DatabaseType =
     const index = await Index({ directory: finalDirectory })();
     const keyValueStore = await KeyValue()({
       ...context,
-      onUpdate: index.update, // replaces the user's onUpdate
+      onUpdate: index.update as DatabaseContext["onUpdate"],
     });
 
     // Define standard methods
@@ -66,15 +62,18 @@ const KeyValueIndexed: DatabaseType =
     const iterator = async function* ({
       amount,
       reverse,
-    }: { amount?: number; reverse?: boolean } = {}): AsyncGenerator<
-      [string, IndexedEntry]
-    > {
-      const it = index.iterator({ amount, reverse });
-      for await (const record of it) {
-        if (Array.isArray(record) && record.length === 2) {
-          const [key, entry] = record as [string, IndexedEntry];
-          yield [entry.payload.key, entry];
-        }
+    }: { amount?: number; reverse?: boolean } = {}): AsyncGenerator<{
+      key: string;
+      value: any;
+      hash: string;
+    }> {
+      for await (const record of index.iterator({ amount, reverse })) {
+        const entry = record[1] as IndexedEntry;
+        yield {
+          key: entry.payload.key,
+          value: entry.payload.value,
+          hash: entry.hash,
+        };
       }
     };
 
@@ -88,11 +87,15 @@ const KeyValueIndexed: DatabaseType =
       await index.drop();
     };
 
-    // Avoid DOM "name" deprecation by explicitly assigning from context/database
-    const dbName = keyValueStore.name || context.name || "keyvalue-indexed";
+    // Name fallback
+    const dbName =
+      keyValueStore.name ||
+      (context as KeyValueIndexedContext).name ||
+      "keyvalue-indexed";
 
+    // Return the KeyValueIndexedInstance
     return {
-      ...keyValueStore,
+      ...keyValueStore, // includes put, del, all, events, etc.
       get,
       iterator,
       close,
@@ -100,7 +103,6 @@ const KeyValueIndexed: DatabaseType =
       address,
       name: dbName,
       type,
-      events: keyValueStore.events,
       update: index.update,
     };
   };

@@ -1,8 +1,9 @@
-import { Log, Identities, KeyStore } from "../../src/index.js";
+// test/sync/helpers.ts
+import { Log, Identities, KeyStore } from "../../src";
 import { rimraf } from "rimraf";
 import { copy } from "fs-extra";
-import testKeysPath from "../fixtures/test-keys-path.js";
-import createHelia from "../utils/create-helia.js";
+import testKeysPath from "../fixtures/test-keys-path";
+import createHelia from "../utils/create-helia";
 
 export const keysPath = "./testkeys";
 

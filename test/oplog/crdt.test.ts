@@ -2,8 +2,8 @@ import { strictEqual, deepStrictEqual } from "assert";
 import { rimraf } from "rimraf";
 import { copy } from "fs-extra";
 import { describe, it, beforeAll, afterAll, beforeEach } from "vitest";
-import { Log, Identities, KeyStore } from "../../src/index.js";
-import testKeysPath from "../fixtures/test-keys-path.js";
+import { Log, Identities, KeyStore } from "../../src";
+import testKeysPath from "../fixtures/test-keys-path";
 
 const keysPath = "./testkeys";
 

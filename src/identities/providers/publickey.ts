@@ -1,6 +1,6 @@
 import { toString as uint8ArrayToString } from "uint8arrays/to-string";
 import type { KeyStoreInstance } from "../../key-store";
-import { signMessage, verifyMessage } from "../../key-store.js";
+import { signMessage, verifyMessage } from "../../key-store";
 import type { IdentityType } from "../identity";
 
 /**

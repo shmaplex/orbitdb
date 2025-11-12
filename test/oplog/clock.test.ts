@@ -1,6 +1,6 @@
 import { strictEqual } from "assert";
 import { describe, it } from "vitest";
-import Clock, { tickClock, compareClocks } from "../../src/oplog/clock.js";
+import Clock, { tickClock, compareClocks } from "../../src/oplog/clock";
 
 describe("Clock", () => {
   it("creates a new clock", () => {

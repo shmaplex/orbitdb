@@ -1,12 +1,8 @@
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { rimraf } from "rimraf";
-import {
-  createOrbitDB,
-  Identities,
-  useIdentityProvider,
-} from "../src/index.js";
-import CustomIdentityProvider from "./fixtures/providers/custom.js";
-import createHelia from "./utils/create-helia.js";
+import { createOrbitDB, Identities, useIdentityProvider } from "../src";
+import CustomIdentityProvider from "./fixtures/providers/custom";
+import createHelia from "./utils/create-helia";
 
 /**
  * @file Custom Identity Provider Test Suite

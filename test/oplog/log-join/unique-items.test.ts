@@ -1,9 +1,9 @@
 // test/oplog/log-join/unique-items.test.ts
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
-import { Log } from "../../../src/index.js";
+import { Log } from "../../../src";
 import { setupIdentities, cleanup, last } from "../utils/test-setup";
 import { EntryType } from "../../../src/oplog";
-import { LogType } from "../../../src/oplog/index.js";
+import { LogType } from "../../../src/oplog";
 
 let keystore: any;
 let log1: LogType, log2: LogType;

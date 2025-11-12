@@ -10,9 +10,9 @@ import {
   beforeEach,
   afterEach,
 } from "vitest";
-import { createOrbitDB, isIdentity } from "../src/index.js";
-import connectPeers from "./utils/connect-nodes.js";
-import createHelia from "./utils/create-helia.js";
+import { createOrbitDB, isIdentity } from "../src";
+import connectPeers from "./utils/connect-nodes";
+import createHelia from "./utils/create-helia";
 
 const isBrowser = () => typeof window !== "undefined";
 
@@ -224,7 +224,7 @@ describe("OrbitDB", () => {
     it("throws an error if given an empty parameters object", async () => {
       let err: any;
       try {
-        orbitdb1 = await createOrbitDB({});
+        orbitdb1 = await createOrbitDB({} as any);
       } catch (e) {
         err = e;
       }
@@ -235,7 +235,7 @@ describe("OrbitDB", () => {
     it("throws an error if IPFS instance is not given", async () => {
       let err: any;
       try {
-        orbitdb1 = await createOrbitDB();
+        orbitdb1 = await createOrbitDB(null as any);
       } catch (e) {
         err = e;
       }
@@ -247,7 +247,7 @@ describe("OrbitDB", () => {
       if (isBrowser()) return;
 
       try {
-        orbitdb1 = await createOrbitDB();
+        orbitdb1 = await createOrbitDB(null as any);
       } catch (e) {}
 
       const dataDirectoryExists = fs.existsSync(path.join("./orbitdb"));

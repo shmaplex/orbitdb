@@ -1,9 +1,9 @@
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { rimraf } from "rimraf";
 import { copy } from "fs-extra";
-import { Log } from "../../src/oplog/index.js";
-import { Identities, KeyStore, KeyStoreType } from "../../src/index.js";
-import testKeysPath from "../fixtures/test-keys-path.js";
+import { Log } from "../../src/oplog";
+import { Identities, KeyStore, KeyStoreType } from "../../src";
+import testKeysPath from "../fixtures/test-keys-path";
 import { keysPath, last } from "./utils/test-setup"; // import the helper
 
 describe("Log - References", () => {

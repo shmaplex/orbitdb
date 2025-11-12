@@ -44,7 +44,7 @@ export interface DatabaseContext {
   identity?: IdentityType;
   address: string;
   name?: string;
-  access?: AccessControllerInput;
+  accessController?: AccessControllerInput;
   directory?: string;
   meta?: Record<string, any>;
   headsStorage?: StorageBackend;
@@ -69,13 +69,13 @@ export interface DatabaseInstance {
   sync: SyncInstance;
   peers: Set<string>;
   events: EventEmitter;
-  access?: OrbitDBAccessControllerInstance;
+  accessController?: OrbitDBAccessControllerInstance;
 }
 
 /** Curried database module type (the factory) */
-export interface DatabaseType {
+export interface DatabaseType<T extends DatabaseInstance = DatabaseInstance> {
   type: string;
-  (options?: any): (context?: any) => Promise<DatabaseInstance>;
+  (options?: any): (context?: any) => Promise<T>;
 }
 
 // ---- Database Implementation ----
@@ -84,7 +84,7 @@ const Database = async ({
   identity,
   address,
   name,
-  access,
+  accessController,
   directory,
   meta,
   headsStorage,
@@ -123,10 +123,10 @@ const Database = async ({
 
   // --- Resolve access controller ---
   let resolvedAccess: OrbitDBAccessControllerInstance | undefined;
-  if (typeof access === "function") {
-    resolvedAccess = await access();
+  if (typeof accessController === "function") {
+    resolvedAccess = await accessController();
   } else {
-    resolvedAccess = access;
+    resolvedAccess = accessController;
   }
 
   // --- Initialize log ---
@@ -213,7 +213,7 @@ const Database = async ({
     sync,
     peers: sync.peers,
     events,
-    access: resolvedAccess,
+    accessController: resolvedAccess,
   };
 };
 

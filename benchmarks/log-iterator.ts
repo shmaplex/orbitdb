@@ -1,0 +1,77 @@
+import { Identities, Log, LogType } from "../src/index";
+import { MemoryStorage } from "../src/storage";
+// import { MemoryStorage, LevelStorage, LRUStorage } from '../src/storage'
+import { rimraf as rmrf } from "rimraf";
+
+/**
+ * Benchmark script for Log performance
+ */
+(async () => {
+  console.log("Starting benchmark...");
+
+  await rmrf("./orbitdb");
+
+  /** Initialize identities */
+  const identities = await Identities();
+  const testIdentity = await identities.createIdentity({ id: "userA" });
+
+  // MemoryStorage is the default storage for Log but defining them here
+  // in case we want to benchmark different storage modules
+  const entryStorage = await MemoryStorage();
+  const headsStorage = await MemoryStorage();
+  const indexStorage = await MemoryStorage();
+  // Test LRUStorage
+  // const entryStorage = await LRUStorage()
+  // const headsStorage = await LRUStorage()
+  // const indexStorage = await LRUStorage()
+  // Test LevelStorage
+  // const entryStorage = await LevelStorage({ path: './logA/entries' })
+  // const headsStorage = await LevelStorage({ path: './logA/heads' })
+  // const indexStorage = await LevelStorage({ path: './logA/index' })
+
+  /** Initialize log */
+  const log: LogType = await Log(testIdentity, {
+    logId: "A",
+    entryStorage,
+    headsStorage,
+    indexStorage,
+  });
+
+  const entryCount = 10000;
+
+  console.log(`Append ${entryCount} entries`);
+
+  /** Benchmark appending entries */
+  const startTime1 = Date.now();
+  for (let i = 0; i < entryCount; i++) {
+    await log.append(i.toString(), { referencesCount: 0 });
+  }
+  const endTime1 = Date.now();
+  const duration1 = endTime1 - startTime1;
+  const operationsPerSecond1 = Math.floor(entryCount / (duration1 / 1000));
+  const millisecondsPerOp1 = duration1 / entryCount;
+
+  console.log(
+    `Appending ${entryCount} entries took ${duration1} ms, ${operationsPerSecond1} ops/s, ${millisecondsPerOp1} ms/op`
+  );
+
+  /** Benchmark iterating entries */
+  console.log(`Iterate ${entryCount} entries`);
+  const startTime2 = Date.now();
+  const all: any[] = [];
+  for await (const entry of log.iterator()) {
+    all.unshift(entry);
+  }
+  const endTime2 = Date.now();
+  const duration2 = endTime2 - startTime2;
+  const operationsPerSecond2 = Math.floor(entryCount / (duration2 / 1000));
+  const millisecondsPerOp2 = duration2 / entryCount;
+
+  console.log(
+    `Iterating ${all.length} entries took ${duration2} ms, ${operationsPerSecond2} ops/s, ${millisecondsPerOp2} ms/op`
+  );
+
+  await rmrf("./orbitdb");
+
+  process.exit(0);
+})();

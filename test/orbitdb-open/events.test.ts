@@ -4,7 +4,7 @@ import {
   teardownTwoNodes,
   createDB,
 } from "./utils/orbitdb-test-setup";
-import waitFor from "../utils/wait-for.js";
+import waitFor from "../utils/wait-for";
 import { describe, it, beforeAll, afterAll } from "vitest";
 
 describe("Events Database", () => {

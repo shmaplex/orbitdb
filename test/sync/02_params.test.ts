@@ -1,7 +1,7 @@
 // test/sync/02_params.test.ts
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { setupIdentities, cleanup, copyKeys } from "./helpers";
-import Sync from "../../src/sync.js";
+import Sync from "../../src/sync";
 
 let ipfs1: any;
 let ipfs2: any;

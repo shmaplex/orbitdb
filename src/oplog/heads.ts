@@ -7,7 +7,7 @@
 
 import type { StorageBackend } from "../storage";
 import MemoryStorage from "../storage/memory";
-import Entry, { type Entry as EntryType } from "./entry";
+import Entry, { type EntryType } from "./entry";
 
 /** Heads options type */
 export interface HeadsOptions {

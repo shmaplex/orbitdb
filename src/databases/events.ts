@@ -1,11 +1,12 @@
 import type { IPFS } from "ipfs-core-types";
+import type { Helia } from "node_modules/helia/dist/src";
 import Database, {
   type DatabaseInstance,
   type DatabaseType,
   type Encryption,
 } from "../database";
 import type { IdentityType } from "../identities";
-import { StorageBackend } from "../storage";
+import type { StorageBackend } from "../storage";
 
 const type = "events";
 
@@ -13,7 +14,7 @@ const type = "events";
  * Context required to create an Events database instance.
  */
 export interface EventsContext {
-  ipfs: IPFS;
+  ipfs: Helia | IPFS;
   identity?: IdentityType;
   address: string;
   name?: string;
@@ -52,7 +53,7 @@ export interface EventPayload<T = any> {
 /**
  * Live Events database instance.
  */
-export interface EventsInstance<T = any> extends DatabaseInstance {
+export interface EventsInstance<T = unknown> extends DatabaseInstance {
   type: string;
   name: string;
   add: (value: T) => Promise<string>;

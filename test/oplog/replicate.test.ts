@@ -16,11 +16,11 @@ import {
   KeyStore,
   IPFSBlockStorage,
   KeyStoreType,
-} from "../../src/index.js";
-import testKeysPath from "../fixtures/test-keys-path.js";
-import connectPeers from "../utils/connect-nodes.js";
-import waitForPeers from "../utils/wait-for-peers.js";
-import createHelia from "../utils/create-helia.js";
+} from "../../src";
+import testKeysPath from "../fixtures/test-keys-path";
+import connectPeers from "../utils/connect-nodes";
+import waitForPeers from "../utils/wait-for-peers";
+import createHelia from "../utils/create-helia";
 
 const keysPath = "./testkeys";
 

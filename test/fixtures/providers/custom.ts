@@ -1,50 +1,64 @@
-import { IdentityProvider } from "../../../src/identities";
+import type { IdentityProvider } from "../../../src/identities";
+import type { IdentityType } from "../../../src/identities/identity";
 
 /**
- * The type of the custom identity provider.
+ * The type identifier of this custom identity provider.
  */
 const type = "custom";
 
 /**
  * Verifies the identity data.
- * @param data - The data to verify.
- * @returns A promise that resolves to `true` if verification is successful.
+ * @param identity - The identity object to verify.
+ * @returns Resolves to `true` if verification is successful.
  */
-const verifyIdentity = async (data: unknown): Promise<boolean> => true;
+const verifyIdentity = async (identity: IdentityType): Promise<boolean> => true;
 
 /**
- * Factory function for creating a custom identity provider.
- * Returns an async function to keep backward compatibility.
+ * Factory function for creating a custom identity provider instance.
+ * Can be used with `useIdentityProvider` for OrbitDB identities.
+ *
+ * @returns Promise resolving to the provider API object.
  */
-const CustomIdentityProvider =
-  () =>
-  /** @returns Promise of identity provider API */
-  async () => {
-    /**
-     * Returns the ID of the identity provider.
-     */
-    const getId = (): string => "custom";
+const CustomIdentityProvider = (): IdentityProvider => ({
+  /**
+   * The type of the provider.
+   */
+  type,
 
-    /**
-     * Signs identity data.
-     * @param data - The data to sign.
-     */
-    const signIdentity = (data: unknown): string => `signature '${data}'`;
+  /**
+   * Returns the unique ID of this identity provider.
+   * @param options - Optional identity provider options.
+   * @returns Resolves to the ID string.
+   */
+  getId: async (options?: any): Promise<string> => {
+    return "custom";
+  },
 
-    return {
-      getId,
-      signIdentity,
-      type,
-    };
-  };
+  /**
+   * Signs the given identity data.
+   * @param data - The data to sign.
+   * @param options - Optional identity provider options.
+   * @returns Resolves to a string representing the signature.
+   */
+  signIdentity: async (data: unknown, options?: any): Promise<string> => {
+    return `signature '${data}'`;
+  },
+
+  /**
+   * Verifies an identity object.
+   * @param identity - The identity to verify.
+   * @returns Resolves to `true` if verification succeeds.
+   */
+  verifyIdentity,
+});
 
 /**
- * Static method to verify identity without instantiating the provider.
+ * Static helper for verifying identities without instantiating the provider.
  */
 CustomIdentityProvider.verifyIdentity = verifyIdentity;
 
 /**
- * The type of the provider.
+ * Static type identifier for convenience.
  */
 CustomIdentityProvider.type = type;
 

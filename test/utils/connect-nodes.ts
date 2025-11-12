@@ -45,8 +45,8 @@ export interface ConnectIpfsNodesOptions {
  *
  * ### Example
  * ```ts
- * import createHelia from "./utils/create-helia.js";
- * import connectIpfsNodes from "./utils/connect-nodes.js";
+ * import createHelia from "./utils/create-helia";
+ * import connectIpfsNodes from "./utils/connect-nodes";
  *
  * const ipfs1 = await createHelia();
  * const ipfs2 = await createHelia();

@@ -1,8 +1,8 @@
 // test/orbitdb-open/utils/orbitdb-test-setup.ts
 import { rimraf } from "rimraf";
-import createHelia from "../../utils/create-helia.js";
+import createHelia from "../../utils/create-helia";
 import { createOrbitDB } from "../../../src";
-import connectPeers from "../../utils/connect-nodes.js";
+import connectPeers from "../../utils/connect-nodes";
 
 export async function setupTwoNodes() {
   const ipfs1 = await createHelia();

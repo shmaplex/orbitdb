@@ -1,8 +1,8 @@
 // test/oplog/utils/test-setup.ts
 import { copy } from "fs-extra";
 import { rimraf } from "rimraf";
-import { Identities, KeyStore } from "../../../src/index.js";
-import testKeysPath from "../../fixtures/test-keys-path.js";
+import { Identities, KeyStore } from "../../../src";
+import testKeysPath from "../../fixtures/test-keys-path";
 
 export const keysPath = "./testkeys";
 

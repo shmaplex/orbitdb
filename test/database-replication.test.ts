@@ -71,7 +71,7 @@ describe("Database - Replication", () => {
         ipfs: ipfs1,
         identity: testIdentity1,
         address: databaseId,
-        access: accessController,
+        accessController,
         directory: "./orbitdb1",
       });
     });
@@ -95,7 +95,7 @@ describe("Database - Replication", () => {
         ipfs: ipfs2,
         identity: testIdentity2,
         address: databaseId,
-        access: accessController,
+        accessController,
         directory: "./orbitdb2",
       });
 
@@ -143,7 +143,7 @@ describe("Database - Replication", () => {
         ipfs: ipfs1,
         identity: testIdentity1,
         address: databaseId,
-        access: accessController,
+        accessController,
         directory: "./orbitdb1",
         entryStorage: storage1,
       });
@@ -152,7 +152,7 @@ describe("Database - Replication", () => {
         ipfs: ipfs2,
         identity: testIdentity2,
         address: databaseId,
-        access: accessController,
+        accessController,
         directory: "./orbitdb2",
         entryStorage: storage2,
       });

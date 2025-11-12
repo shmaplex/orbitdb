@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import OrbitDBAddress, {
-  isValidAddress,
-  parseAddress,
-} from "../src/address.js";
+import OrbitDBAddress, { isValidAddress, parseAddress } from "../src/address";
 
 /**
  * @file OrbitDBAddress Test Suite

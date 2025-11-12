@@ -1,5 +1,5 @@
 import { describe, it, beforeAll, afterAll, beforeEach, expect } from "vitest";
-import { Log } from "../../../src/index.js";
+import { Log } from "../../../src";
 import { setupIdentities, cleanup, last } from "../utils/test-setup";
 
 let keystore: any;

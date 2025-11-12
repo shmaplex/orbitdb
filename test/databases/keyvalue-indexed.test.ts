@@ -11,10 +11,10 @@ import path from "path";
 import fs from "fs";
 import { rimraf } from "rimraf";
 import { copy } from "fs-extra";
-import { KeyStore, Identities, MemoryStorage } from "../../src/index.js";
-import KeyValueIndexed from "../../src/databases/keyvalue-indexed.js";
-import testKeysPath from "../fixtures/test-keys-path.js";
-import createHelia from "../utils/create-helia.js";
+import { KeyStore, Identities, MemoryStorage } from "../../src";
+import KeyValueIndexed from "../../src/databases/keyvalue-indexed";
+import testKeysPath from "../fixtures/test-keys-path";
+import createHelia from "../utils/create-helia";
 
 const keysPath = "./testkeys";
 
